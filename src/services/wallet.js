@@ -148,7 +148,7 @@ export const connectWallet = async (walletType) => {
       if (window.okxwallet) {
         providerObj = window.okxwallet;
       } else {
-        alert('OKX Wallet not detected! Please install it.');
+        showToast('OKX Wallet not detected! Please install it.', 'error');
         return false;
       }
     } else if (walletType === 'tokenpocket') {
@@ -160,7 +160,7 @@ export const connectWallet = async (walletType) => {
            // Fallback to standard ethereum
            providerObj = window.ethereum;
        } else {
-           alert('TokenPocket not detected! Please install it.');
+           showToast('TokenPocket not detected! Please install it.', 'error');
            return false;
        }
     } else {
@@ -168,7 +168,7 @@ export const connectWallet = async (walletType) => {
       if (window.ethereum) {
         providerObj = window.ethereum;
       } else {
-        alert('No EVM wallet detected!');
+        showToast('No EVM wallet detected!', 'error');
         return false;
       }
     }
@@ -231,7 +231,7 @@ export const connectWallet = async (walletType) => {
 
   } catch (error) {
     console.error('Failed to connect wallet:', error);
-    alert(`Connection failed: ${error.message || 'An unexpected error occurred.'}`);
+    showToast(`Connection failed: ${error.message || 'An unexpected error occurred.'}`, 'error');
     return false;
   }
 };

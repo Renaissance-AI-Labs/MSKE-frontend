@@ -54,10 +54,32 @@ export default {
 }
 </script>
 
+<style>
+/* Global Styles */
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #0a0a0a; /* Dark black background */
+  color: #ffffff;
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+</style>
+
 <style scoped>
 /* Removed visual styles, retained necessary layout if any */
 #wrapper {
-  padding-top: var(--header-height); /* Ensure content doesn't hide behind fixed header */
+  padding-top: 64px; /* Ensure content doesn't hide behind fixed header */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
