@@ -29,6 +29,7 @@
                 <!-- Bottom: Copyright -->
                 <div class="footer-bottom">
                     <p class="copyright">© 2026 MSKE. All rights reserved.</p>
+                    <p class="env-version">Version: {{ appVersion }}</p>
                 </div>
             </div>
         </div>
@@ -36,8 +37,15 @@
 </template>
 
 <script>
+import { APP_ENV } from '@/services/environment';
+
 export default {
-    name: 'Footer'
+    name: 'Footer',
+    computed: {
+        appVersion() {
+            return APP_ENV === 'PROD' ? 'P-1.0' : 'T-1.0';
+        }
+    }
 }
 </script>
 
@@ -144,14 +152,24 @@ export default {
 
 .footer-bottom {
     display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
 }
 
 .copyright {
     font-size: 14px;
     letter-spacing: 0.05em;
+    margin: 0;
+    text-align: left;
+}
+
+.env-version {
+    margin: 8px 0 0;
+    text-align: left;
+    font-size: 12px;
+    color: #8a8a8a;
+    letter-spacing: 0.04em;
 }
 
 @media (max-width: 768px) {
