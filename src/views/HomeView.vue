@@ -33,7 +33,8 @@
       <!-- 内容 -->
       <div class="hero-content">
         <h1 class="hero-title">MSKE</h1>
-        <p class="hero-subtitle">Engrave the Spirit of Musk</p>
+        <p class="hero-subtitle">Bitcoin Stamps inscription token</p>
+        <p class="hero-subtitle-cn">{{ t('home.heroSubtitleSecondary') }}</p>
       </div>
     </section>
 
@@ -69,22 +70,115 @@
 
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
-import * as THREE from 'three';
 import { walletState } from '@/services/wallet';
 import BindReferralModal from '@/components/BindReferralModal.vue';
 import { t } from '@/i18n/index.js';
 
 const marsContainer = ref(null);
-let renderer, scene, camera, marsMesh, animationId;
+let renderer, scene, camera, marsMesh, marsMaterial, animationId;
 let handleResize;
 const isBindModalVisible = ref(false);
+let isUnmounted = false;
+const textureObjectUrls = [];
+
+const TEXTURE_CACHE_PREFIX = 'mske-mars-texture-cache';
+const textureRevisionRaw =
+  import.meta.env.VITE_TEXTURE_VERSION ||
+  import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA ||
+  import.meta.env.VITE_APP_VERSION ||
+  '1.0.0';
+const TEXTURE_CACHE_REVISION = String(textureRevisionRaw).replace(/[^a-zA-Z0-9._-]/g, '_');
+const TEXTURE_CACHE_KEY = `${TEXTURE_CACHE_PREFIX}-${TEXTURE_CACHE_REVISION}`;
+const MARS_MAP_URL = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/mars-map.jpg';
+const MARS_BUMP_URL = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/mars-bump.jpg';
+const versionedTextureUrl = (url) => `${url}?v=${encodeURIComponent(TEXTURE_CACHE_REVISION)}`;
 
 const openBindModal = async () => {
   isBindModalVisible.value = true;
 };
 
-const closeBindModal = () => {
-  isBindModalVisible.value = false;
+const clearOldTextureCaches = async () => {
+  if (typeof window === 'undefined' || !('caches' in window)) {
+    return;
+  }
+
+  try {
+    const cacheKeys = await caches.keys();
+    await Promise.all(
+      cacheKeys
+        .filter((key) => key.startsWith(TEXTURE_CACHE_PREFIX) && key !== TEXTURE_CACHE_KEY)
+        .map((key) => caches.delete(key))
+    );
+  } catch (error) {
+    console.warn('[HomeView] Failed to clear old texture caches:', error);
+  }
+};
+
+const getCachedTextureUrl = async (url) => {
+  if (typeof window === 'undefined' || !('caches' in window)) {
+    return url;
+  }
+
+  try {
+    const cacheUrl = versionedTextureUrl(url);
+    const cache = await caches.open(TEXTURE_CACHE_KEY);
+    let response = await cache.match(cacheUrl);
+
+    if (!response) {
+      response = await fetch(cacheUrl, { mode: 'cors', cache: 'force-cache' });
+      if (response && response.ok) {
+        await cache.put(cacheUrl, response.clone());
+      }
+    }
+
+    if (!response || !response.ok) {
+      return url;
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    textureObjectUrls.push(objectUrl);
+    return objectUrl;
+  } catch (error) {
+    // Fallback to direct URL when cache API or CORS fails.
+    console.warn('[HomeView] Texture cache fallback:', error);
+    return url;
+  }
+};
+
+const loadMarsTextures = async (THREE_LIB) => {
+  if (!marsMaterial) return;
+
+  const textureLoader = new THREE_LIB.TextureLoader();
+
+  try {
+    const [mapUrl, bumpUrl] = await Promise.all([
+      getCachedTextureUrl(MARS_MAP_URL),
+      getCachedTextureUrl(MARS_BUMP_URL)
+    ]);
+
+    if (isUnmounted || !marsMaterial) return;
+
+    const [mapTexture, bumpTexture] = await Promise.all([
+      textureLoader.loadAsync(mapUrl),
+      textureLoader.loadAsync(bumpUrl)
+    ]);
+
+    if (isUnmounted || !marsMaterial) {
+      mapTexture.dispose();
+      bumpTexture.dispose();
+      return;
+    }
+
+    marsMaterial.map = mapTexture;
+    marsMaterial.bumpMap = bumpTexture;
+    marsMaterial.bumpScale = 12;
+    marsMaterial.specular = new THREE_LIB.Color('#111111');
+    marsMaterial.shininess = 5;
+    marsMaterial.needsUpdate = true;
+  } catch (error) {
+    console.warn('[HomeView] Failed to load Mars textures:', error);
+  }
 };
 
 onMounted(() => {
@@ -95,38 +189,45 @@ onMounted(() => {
   }
 });
 
-onMounted(() => {
+onMounted(async () => {
+  clearOldTextureCaches();
+  const THREE_LIB = await import('three');
+  if (isUnmounted) return;
+
   const container = marsContainer.value;
   if (!container) return;
   
   const width = container.clientWidth;
   const height = container.clientHeight;
 
-  scene = new THREE.Scene();
+  scene = new THREE_LIB.Scene();
 
   // Ambient light for subtle fill
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.05);
+  const ambientLight = new THREE_LIB.AmbientLight(0xffffff, 0.05);
   scene.add(ambientLight);
 
   // Main directional light to create dramatic shadows (sunlight)
-  const mainLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+  const mainLight = new THREE_LIB.DirectionalLight(0xffeedd, 1.2);
   mainLight.position.set(-1000, 500, 500);
   scene.add(mainLight);
 
   // Rim light for premium sci-fi feel (orange/red glow on the dark edge)
-  const rimLight = new THREE.DirectionalLight(0xff4500, 2);
+  const rimLight = new THREE_LIB.DirectionalLight(0xff4500, 2);
   rimLight.position.set(1000, -500, -500);
   scene.add(rimLight);
 
-  camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 10000);
+  camera = new THREE_LIB.PerspectiveCamera(45, width / height, 0.1, 10000);
   // Position camera to look at the top curve of Mars (zoomed in)
   camera.position.set(0, 100, 600);
   camera.lookAt(0, -100, 0);
 
   // Create large sphere (reduced segments for performance)
-  const marsGeo = new THREE.SphereGeometry(450, 48, 48);
-  const marsMaterial = new THREE.MeshPhongMaterial();
-  marsMesh = new THREE.Mesh(marsGeo, marsMaterial);
+  const marsGeo = new THREE_LIB.SphereGeometry(450, 48, 48);
+  marsMaterial = new THREE_LIB.MeshPhongMaterial({
+    // Keep base color neutral so texture colors are not tinted.
+    color: '#ffffff'
+  });
+  marsMesh = new THREE_LIB.Mesh(marsGeo, marsMaterial);
   // Move sphere down so only the top curve is visible
   marsMesh.position.set(0, -380, 0);
   
@@ -136,23 +237,14 @@ onMounted(() => {
   
   scene.add(marsMesh);
 
-  // Load textures
-  const loader = new THREE.TextureLoader();
-  const imgLoc = "https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/";
-  marsMaterial.map = loader.load(imgLoc + 'mars-map.jpg');
-  marsMaterial.bumpMap = loader.load(imgLoc + 'mars-bump.jpg');
-  marsMaterial.bumpScale = 12; // deep craters for premium look
-  marsMaterial.specular = new THREE.Color('#111111');
-  marsMaterial.shininess = 5;
-
   // Disabled antialiasing for background performance, hint high-performance
-  renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
+  renderer = new THREE_LIB.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
   renderer.setSize(width, height);
   // Cap pixel ratio to 1.5 to prevent massive fragment shader cost on retina
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   container.appendChild(renderer.domElement);
 
-  const timer = new THREE.Timer();
+  const timer = new THREE_LIB.Timer();
 
   const animate = () => {
     animationId = requestAnimationFrame(animate);
@@ -163,6 +255,7 @@ onMounted(() => {
     renderer.render(scene, camera);
   };
   animate();
+  loadMarsTextures(THREE_LIB);
 
   handleResize = () => {
     if (!container || !camera || !renderer) return;
@@ -177,6 +270,7 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  isUnmounted = true;
   if (handleResize) {
     window.removeEventListener('resize', handleResize);
   }
@@ -190,6 +284,7 @@ onBeforeUnmount(() => {
     marsMesh.geometry.dispose();
     marsMesh.material.dispose();
   }
+  textureObjectUrls.forEach((url) => URL.revokeObjectURL(url));
 });
 </script>
 
@@ -352,7 +447,7 @@ onBeforeUnmount(() => {
   z-index: 10;
   text-align: center;
   padding: 0 20px;
-  margin-top: 30px;
+  margin-top: 50px;
 }
 
 /* 文字背景高光层，提升文字质感和可读性 */
@@ -387,14 +482,27 @@ onBeforeUnmount(() => {
 
 /* 副标题：沙粒般的暗金色，字间距拉开体现寂静感 */
 .hero-subtitle {
-  font-size: clamp(0.8rem, 2vw, 1.1rem);
-  letter-spacing: 0.5em;
+  font-size: clamp(0.75rem, 1.6vw, 1rem);
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: #c4a993; /* 更亮的尘土金 */
+  color: #e8cfb8;
   margin: 0;
+  font-weight: 500;
+  opacity: 0.9;
+  line-height: 1.7;
+  text-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  max-width: min(90vw, 920px);
+}
+
+.hero-subtitle-cn {
+  margin: 2px 0 0;
+  font-size: clamp(0.78rem, 1.5vw, 0.96rem);
+  letter-spacing: 0.12em;
+  line-height: 1.7;
   font-weight: 400;
-  opacity: 0.85;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  color: rgba(239, 214, 190, 0.82);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+  max-width: min(88vw, 780px);
 }
 
 /* =========================================
