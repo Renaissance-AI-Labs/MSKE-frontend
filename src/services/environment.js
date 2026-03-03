@@ -2,17 +2,15 @@
 
 /**
  * Determines the application's current running environment.
- * It checks Vercel's system environment variable to distinguish between
- * production, preview, and local development environments.
+ * It checks Vercel's system environment variable and maps to two modes:
+ * PROD and dev.
  */
 const getAppEnv = () => {
   const vercelEnv = import.meta.env.VITE_VERCEL_ENV;
   if (vercelEnv === 'production') {
     return 'PROD';
   }
-  if (vercelEnv === 'preview') {
-    return 'test';
-  }
+  // Preview and local both use dev configuration.
   return 'dev';
 };
 

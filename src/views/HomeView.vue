@@ -40,23 +40,29 @@
     <!-- 2. 中间：质押区域、绑定按钮、资讯按钮 (占位) -->
     <section class="middle-section">
       <div class="placeholder-box staking-box">
-        <h2>用户质押区域 (Staking Area)</h2>
-        <p>在此质押您的代币以获取收益...</p>
+        <h2>{{ t('home.stakingAreaTitle') }}</h2>
+        <p>{{ t('home.stakingAreaDesc') }}</p>
       </div>
       
       <div class="action-buttons">
-        <button class="placeholder-btn">绑定 (Bind)</button>
-        <button class="placeholder-btn">资讯 (Info)</button>
+        <button class="placeholder-btn" @click="openBindModal">{{ t('home.bind') }}</button>
+        <button class="placeholder-btn">{{ t('home.info') }}</button>
       </div>
     </section>
 
     <!-- 3. 底部：订单列表 (占位) -->
     <section class="bottom-section">
       <div class="placeholder-box orders-box">
-        <h2>订单列表 (Orders)</h2>
-        <p>暂无数据...</p>
+        <h2>{{ t('home.ordersTitle') }}</h2>
+        <p>{{ t('home.noData') }}</p>
       </div>
     </section>
+
+    <BindReferralModal
+      v-model="isBindModalVisible"
+      :is-connected="walletState.isConnected"
+      :user-address="walletState.address || ''"
+    />
 
   </div>
 </template>
@@ -64,10 +70,30 @@
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import * as THREE from 'three';
+import { walletState } from '@/services/wallet';
+import BindReferralModal from '@/components/BindReferralModal.vue';
+import { t } from '@/i18n/index.js';
 
 const marsContainer = ref(null);
 let renderer, scene, camera, marsMesh, animationId;
 let handleResize;
+const isBindModalVisible = ref(false);
+
+const openBindModal = async () => {
+  isBindModalVisible.value = true;
+};
+
+const closeBindModal = () => {
+  isBindModalVisible.value = false;
+};
+
+onMounted(() => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const refParam = urlParams.get('ref');
+  if (refParam) {
+    openBindModal();
+  }
+});
 
 onMounted(() => {
   const container = marsContainer.value;
@@ -475,5 +501,6 @@ onBeforeUnmount(() => {
     padding: 10px 24px;
     font-size: 0.9rem;
   }
+
 }
 </style>

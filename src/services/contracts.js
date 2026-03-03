@@ -1,5 +1,27 @@
 // src/services/contracts.js
 import { walletState } from './wallet';
+import { APP_ENV } from './environment';
+
+const CONTRACT_ADDRESSES = {
+  PROD: {
+    Referral: ''
+  },
+  dev: {
+    Referral: '0x91b13B02b9dcc725D6D81afEa31Dd070Da615A98'
+  }
+};
+
+export const getContractAddress = (contractName) => {
+  const envAddresses = CONTRACT_ADDRESSES[APP_ENV] || {};
+  if (envAddresses[contractName]) {
+    return envAddresses[contractName];
+  }
+
+  const matchedKey = Object.keys(envAddresses).find(
+    (key) => key.toLowerCase() === String(contractName).toLowerCase()
+  );
+  return matchedKey ? envAddresses[matchedKey] : '';
+};
 
 /**
  * Initializes all contract instances.
