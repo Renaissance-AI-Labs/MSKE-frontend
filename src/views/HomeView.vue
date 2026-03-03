@@ -47,7 +47,7 @@
       
       <div class="action-buttons">
         <button class="placeholder-btn" @click="openBindModal">{{ t('home.bind') }}</button>
-        <button class="placeholder-btn">{{ t('home.info') }}</button>
+        <button class="placeholder-btn" @click="openFriendsModal">{{ t('home.info') }}</button>
       </div>
     </section>
 
@@ -64,6 +64,11 @@
       :is-connected="walletState.isConnected"
       :user-address="walletState.address || ''"
     />
+    <MyFriendsModal
+      v-model="isFriendsModalVisible"
+      :is-connected="walletState.isConnected"
+      :user-address="walletState.address || ''"
+    />
 
   </div>
 </template>
@@ -72,12 +77,14 @@
 import { onMounted, onBeforeUnmount, ref } from 'vue';
 import { walletState } from '@/services/wallet';
 import BindReferralModal from '@/components/BindReferralModal.vue';
+import MyFriendsModal from '@/components/MyFriendsModal.vue';
 import { t } from '@/i18n/index.js';
 
 const marsContainer = ref(null);
 let renderer, scene, camera, marsMesh, marsMaterial, animationId;
 let handleResize;
 const isBindModalVisible = ref(false);
+const isFriendsModalVisible = ref(false);
 let isUnmounted = false;
 const textureObjectUrls = [];
 
@@ -95,6 +102,10 @@ const versionedTextureUrl = (url) => `${url}?v=${encodeURIComponent(TEXTURE_CACH
 
 const openBindModal = async () => {
   isBindModalVisible.value = true;
+};
+
+const openFriendsModal = async () => {
+  isFriendsModalVisible.value = true;
 };
 
 const clearOldTextureCaches = async () => {
