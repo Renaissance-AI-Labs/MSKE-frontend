@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
+import OrdersView from '../views/OrdersView.vue';
+import FriendsView from '../views/FriendsView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
 import { walletState } from '../services/wallet';
 
@@ -8,6 +10,16 @@ const routes = [
     path: '/',
     name: 'Home',
     component: HomeView,
+  },
+  {
+    path: '/orders',
+    name: 'Orders',
+    component: OrdersView,
+  },
+  {
+    path: '/friends',
+    name: 'Friends',
+    component: FriendsView,
   },
   {
     path: '/:pathMatch(.*)*',

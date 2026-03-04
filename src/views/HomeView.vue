@@ -11,13 +11,22 @@
       
       <!-- 动态星火/沙粒颗粒 -->
       <div class="particles-container">
-        <div class="particle p1"></div>
-        <div class="particle p2"></div>
-        <div class="particle p3"></div>
-        <div class="particle p4"></div>
-        <div class="particle p5"></div>
-        <div class="particle p6"></div>
-        <div class="particle p7"></div>
+        <div
+          v-for="item in particles"
+          :key="item.id"
+          class="particle"
+          :style="{
+            '--size': `${item.size}px`,
+            '--left': `${item.left}%`,
+            '--top': `${item.top}%`,
+            '--duration': `${item.duration}s`,
+            '--delay': `${item.delay}s`,
+            '--drift-x': `${item.driftX}vw`,
+            '--drift-y': `${item.driftY}vh`,
+            '--particle-opacity': `${item.opacity}`,
+            '--highlight-weight': `${item.highlightWeight}`
+          }"
+        ></div>
       </div>
 
       <!-- 流动风沙纹理层 -->
@@ -44,47 +53,26 @@
         <h2>{{ t('home.stakingAreaTitle') }}</h2>
         <p>{{ t('home.stakingAreaDesc') }}</p>
       </div>
-      
-      <div class="action-buttons">
-        <button class="placeholder-btn" @click="openBindModal">{{ t('home.bind') }}</button>
-        <button class="placeholder-btn" @click="openFriendsModal">{{ t('home.info') }}</button>
+
+      <div class="placeholder-box dividend-box">
+        <h2>分红区域</h2>
+        <p>暂无分红数据</p>
       </div>
     </section>
-
-    <!-- 3. 底部：订单列表 (占位) -->
-    <section class="bottom-section">
-      <div class="placeholder-box orders-box">
-        <h2>{{ t('home.ordersTitle') }}</h2>
-        <p>{{ t('home.noData') }}</p>
-      </div>
-    </section>
-
-    <BindReferralModal
-      v-model="isBindModalVisible"
-      :is-connected="walletState.isConnected"
-      :user-address="walletState.address || ''"
-    />
-    <MyFriendsModal
-      v-model="isFriendsModalVisible"
-      :is-connected="walletState.isConnected"
-      :user-address="walletState.address || ''"
-    />
 
   </div>
 </template>
 
 <script setup>
 import { onMounted, onBeforeUnmount, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { walletState } from '@/services/wallet';
-import BindReferralModal from '@/components/BindReferralModal.vue';
-import MyFriendsModal from '@/components/MyFriendsModal.vue';
 import { t } from '@/i18n/index.js';
 
+const router = useRouter();
 const marsContainer = ref(null);
 let renderer, scene, camera, marsMesh, marsMaterial, animationId;
 let handleResize;
-const isBindModalVisible = ref(false);
-const isFriendsModalVisible = ref(false);
 let isUnmounted = false;
 const textureObjectUrls = [];
 
@@ -99,14 +87,29 @@ const TEXTURE_CACHE_KEY = `${TEXTURE_CACHE_PREFIX}-${TEXTURE_CACHE_REVISION}`;
 const MARS_MAP_URL = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/mars-map.jpg';
 const MARS_BUMP_URL = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/mars-bump.jpg';
 const versionedTextureUrl = (url) => `${url}?v=${encodeURIComponent(TEXTURE_CACHE_REVISION)}`;
+const PARTICLE_COUNT = 14;
+const HIGHLIGHT_PARTICLE_COUNT = 4;
 
-const openBindModal = async () => {
-  isBindModalVisible.value = true;
-};
-
-const openFriendsModal = async () => {
-  isFriendsModalVisible.value = true;
-};
+const particles = Array.from({ length: PARTICLE_COUNT }, (_, index) => {
+  const isHighlight = index < HIGHLIGHT_PARTICLE_COUNT;
+  const duration = Number((Math.random() * 10 + 10).toFixed(2));
+  const baseTop = isHighlight
+    ? Number((Math.random() * 28 + 34).toFixed(2))
+    : Number((Math.random() * 60 + 45).toFixed(2));
+  return {
+    id: `particle-${index}`,
+    size: Number((Math.random() * (isHighlight ? 2.8 : 3.5) + (isHighlight ? 2.6 : 1.5)).toFixed(2)),
+    left: Number((Math.random() * 120 - 20).toFixed(2)),
+    top: baseTop,
+    duration,
+    // Use negative delay so particles are visible immediately on first paint.
+    delay: -Number((Math.random() * duration).toFixed(2)),
+    driftX: Number((Math.random() * 30 + 18).toFixed(2)),
+    driftY: -Number((Math.random() * 42 + 40).toFixed(2)),
+    opacity: Number((Math.random() * (isHighlight ? 0.25 : 0.35) + (isHighlight ? 0.8 : 0.6)).toFixed(2)),
+    highlightWeight: isHighlight ? 1.45 : 1
+  };
+});
 
 const clearOldTextureCaches = async () => {
   if (typeof window === 'undefined' || !('caches' in window)) {
@@ -196,7 +199,7 @@ onMounted(() => {
   const urlParams = new URLSearchParams(window.location.search);
   const refParam = urlParams.get('ref');
   if (refParam) {
-    openBindModal();
+    router.replace({ path: '/friends', query: { tab: 'recommendations', ref: refParam } });
   }
 });
 
@@ -341,8 +344,8 @@ onBeforeUnmount(() => {
   background: linear-gradient(
     to bottom,
     rgba(5, 3, 2, 0) 0%,       /* 顶部完全透明，显示火星 */
-    rgba(5, 3, 2, 0.7) 50%,    /* mid-section 位置约 30% 亮度可见度 (0.7遮罩) */
-    rgba(5, 3, 2, 0.9) 80%,    /* bottom-section 位置约 10% 亮度可见度 (0.9遮罩) */
+    rgba(5, 3, 2, 0.62) 50%,   /* 稍微减弱遮罩，提升粒子可见度 */
+    rgba(5, 3, 2, 0.82) 80%,   /* 稍微减弱遮罩，提升粒子可见度 */
     rgba(5, 3, 2, 1) 100%      /* 底部完全融入背景色 */
   );
   z-index: 4; /* 盖在粒子和沙尘上面，但不挡住前面的UI */
@@ -413,42 +416,52 @@ onBeforeUnmount(() => {
 .particles-container {
   position: absolute;
   inset: 0;
-  z-index: 3;
+  z-index: 5;
   pointer-events: none;
 }
 
 .particle {
   position: absolute;
-  background: rgba(255, 120, 50, 0.9);
+  left: var(--left);
+  top: var(--top);
+  width: var(--size);
+  height: var(--size);
+  background: rgba(255, 178, 130, 0.42);
   border-radius: 50%;
   filter: blur(1px);
-  box-shadow: 0 0 10px 2px rgba(255, 69, 0, 0.8);
+  box-shadow: 0 0 8px 1px rgba(255, 166, 112, calc(0.45 * var(--highlight-weight)));
   opacity: 0;
   will-change: transform, opacity;
+  animation: float-up-right var(--duration) ease-in-out infinite var(--delay);
 }
-
-.p1 { width: 3px; height: 3px; left: -5%; top: 80%; animation: float-up-right 12s ease-in-out infinite; }
-.p2 { width: 4px; height: 4px; left: 10%; top: 110%; animation: float-up-right 15s ease-in-out infinite 2s; }
-.p3 { width: 2px; height: 2px; left: 30%; top: 100%; animation: float-up-right 10s linear infinite 5s; }
-.p4 { width: 5px; height: 5px; left: -10%; top: 60%; animation: float-up-right 18s ease-in-out infinite 1s; }
-.p5 { width: 3px; height: 3px; left: 50%; top: 120%; animation: float-up-right 14s linear infinite 4s; }
-.p6 { width: 2px; height: 2px; left: 70%; top: 100%; animation: float-up-right 11s ease-in-out infinite 3s; }
-.p7 { width: 4px; height: 4px; left: -15%; top: 90%; animation: float-up-right 16s ease-in-out infinite 6s; }
 
 @keyframes float-up-right {
   0% {
     opacity: 0;
     transform: translate(0, 0) scale(0.5);
+    background: rgba(255, 188, 145, 0.35);
+    box-shadow: 0 0 6px 1px rgba(255, 175, 125, calc(0.3 * var(--highlight-weight)));
   }
-  20% {
-    opacity: 1;
+  22% {
+    opacity: calc(var(--particle-opacity) * 0.55 * var(--highlight-weight));
+    background: rgba(255, 170, 120, 0.55);
+    box-shadow: 0 0 9px 2px rgba(255, 140, 95, calc(0.45 * var(--highlight-weight)));
   }
-  80% {
-    opacity: 0.8;
+  56% {
+    opacity: calc(var(--particle-opacity) * var(--highlight-weight));
+    background: rgba(255, 118, 58, 0.9);
+    box-shadow: 0 0 13px 3px rgba(255, 80, 32, calc(0.78 * var(--highlight-weight)));
+  }
+  82% {
+    opacity: calc(var(--particle-opacity) * 0.8 * var(--highlight-weight));
+    background: rgba(255, 132, 70, 0.82);
+    box-shadow: 0 0 11px 2px rgba(255, 92, 40, calc(0.65 * var(--highlight-weight)));
   }
   100% {
     opacity: 0;
-    transform: translate(30vw, -40vh) scale(1.5);
+    transform: translate(var(--drift-x), var(--drift-y)) scale(1.45);
+    background: rgba(255, 172, 125, 0.4);
+    box-shadow: 0 0 7px 1px rgba(255, 145, 98, calc(0.35 * var(--highlight-weight)));
   }
 }
 
@@ -519,8 +532,7 @@ onBeforeUnmount(() => {
 /* =========================================
    2. 中间 & 底部 Section (占位设计)
    ========================================= */
-.middle-section,
-.bottom-section {
+.middle-section {
   position: relative;
   z-index: 10;
   width: 100%;
@@ -571,34 +583,12 @@ onBeforeUnmount(() => {
 }
 
 /* 按钮组 */
-.action-buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.action-buttons > * {
-  margin-right: 16px;
-}
-.action-buttons > *:last-child {
-  margin-right: 0;
+.dividend-box h2 {
+  color: #ffd6b5;
 }
 
-.placeholder-btn {
-  background: rgba(255, 69, 0, 0.1);
-  border: 1px solid rgba(255, 69, 0, 0.3);
-  color: #ffaa55;
-  padding: 12px 32px;
-  border-radius: 8px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.placeholder-btn:hover {
-  background: rgba(255, 69, 0, 0.2);
-  border-color: #ff4500;
-  color: #fff;
+.dividend-box p {
+  color: #c9b5a5;
 }
 
 @media (max-width: 768px) {
@@ -607,18 +597,12 @@ onBeforeUnmount(() => {
     min-height: 250px;
   }
   
-  .middle-section,
-  .bottom-section {
+  .middle-section {
     padding: 30px 16px;
   }
   
   .placeholder-box {
     padding: 30px 16px;
-  }
-  
-  .placeholder-btn {
-    padding: 10px 24px;
-    font-size: 0.9rem;
   }
 
 }
