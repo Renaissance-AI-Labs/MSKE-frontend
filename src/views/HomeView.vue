@@ -23,7 +23,8 @@
             '--delay': `${item.delay}s`,
             '--drift-x': `${item.driftX}vw`,
             '--drift-y': `${item.driftY}vh`,
-            '--particle-opacity': `${item.opacity}`
+            '--particle-opacity': `${item.opacity}`,
+            '--highlight-weight': `${item.highlightWeight}`
           }"
         ></div>
       </div>
@@ -86,19 +87,29 @@ const TEXTURE_CACHE_KEY = `${TEXTURE_CACHE_PREFIX}-${TEXTURE_CACHE_REVISION}`;
 const MARS_MAP_URL = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/mars-map.jpg';
 const MARS_BUMP_URL = 'https://s3-us-west-2.amazonaws.com/s.cdpn.io/4273/mars-bump.jpg';
 const versionedTextureUrl = (url) => `${url}?v=${encodeURIComponent(TEXTURE_CACHE_REVISION)}`;
-const PARTICLE_COUNT = 18;
+const PARTICLE_COUNT = 14;
+const HIGHLIGHT_PARTICLE_COUNT = 4;
 
-const particles = Array.from({ length: PARTICLE_COUNT }, (_, index) => ({
-  id: `particle-${index}`,
-  size: Number((Math.random() * 3.5 + 1.5).toFixed(2)),
-  left: Number((Math.random() * 120 - 20).toFixed(2)),
-  top: Number((Math.random() * 60 + 45).toFixed(2)),
-  duration: Number((Math.random() * 10 + 10).toFixed(2)),
-  delay: Number((Math.random() * 12).toFixed(2)),
-  driftX: Number((Math.random() * 30 + 18).toFixed(2)),
-  driftY: -Number((Math.random() * 42 + 40).toFixed(2)),
-  opacity: Number((Math.random() * 0.35 + 0.6).toFixed(2))
-}));
+const particles = Array.from({ length: PARTICLE_COUNT }, (_, index) => {
+  const isHighlight = index < HIGHLIGHT_PARTICLE_COUNT;
+  const duration = Number((Math.random() * 10 + 10).toFixed(2));
+  const baseTop = isHighlight
+    ? Number((Math.random() * 28 + 34).toFixed(2))
+    : Number((Math.random() * 60 + 45).toFixed(2));
+  return {
+    id: `particle-${index}`,
+    size: Number((Math.random() * (isHighlight ? 2.8 : 3.5) + (isHighlight ? 2.6 : 1.5)).toFixed(2)),
+    left: Number((Math.random() * 120 - 20).toFixed(2)),
+    top: baseTop,
+    duration,
+    // Use negative delay so particles are visible immediately on first paint.
+    delay: -Number((Math.random() * duration).toFixed(2)),
+    driftX: Number((Math.random() * 30 + 18).toFixed(2)),
+    driftY: -Number((Math.random() * 42 + 40).toFixed(2)),
+    opacity: Number((Math.random() * (isHighlight ? 0.25 : 0.35) + (isHighlight ? 0.8 : 0.6)).toFixed(2)),
+    highlightWeight: isHighlight ? 1.45 : 1
+  };
+});
 
 const clearOldTextureCaches = async () => {
   if (typeof window === 'undefined' || !('caches' in window)) {
@@ -418,7 +429,7 @@ onBeforeUnmount(() => {
   background: rgba(255, 178, 130, 0.42);
   border-radius: 50%;
   filter: blur(1px);
-  box-shadow: 0 0 8px 1px rgba(255, 166, 112, 0.45);
+  box-shadow: 0 0 8px 1px rgba(255, 166, 112, calc(0.45 * var(--highlight-weight)));
   opacity: 0;
   will-change: transform, opacity;
   animation: float-up-right var(--duration) ease-in-out infinite var(--delay);
@@ -429,28 +440,28 @@ onBeforeUnmount(() => {
     opacity: 0;
     transform: translate(0, 0) scale(0.5);
     background: rgba(255, 188, 145, 0.35);
-    box-shadow: 0 0 6px 1px rgba(255, 175, 125, 0.3);
+    box-shadow: 0 0 6px 1px rgba(255, 175, 125, calc(0.3 * var(--highlight-weight)));
   }
   22% {
-    opacity: calc(var(--particle-opacity) * 0.55);
+    opacity: calc(var(--particle-opacity) * 0.55 * var(--highlight-weight));
     background: rgba(255, 170, 120, 0.55);
-    box-shadow: 0 0 9px 2px rgba(255, 140, 95, 0.45);
+    box-shadow: 0 0 9px 2px rgba(255, 140, 95, calc(0.45 * var(--highlight-weight)));
   }
   56% {
-    opacity: var(--particle-opacity);
+    opacity: calc(var(--particle-opacity) * var(--highlight-weight));
     background: rgba(255, 118, 58, 0.9);
-    box-shadow: 0 0 13px 3px rgba(255, 80, 32, 0.78);
+    box-shadow: 0 0 13px 3px rgba(255, 80, 32, calc(0.78 * var(--highlight-weight)));
   }
   82% {
-    opacity: calc(var(--particle-opacity) * 0.8);
+    opacity: calc(var(--particle-opacity) * 0.8 * var(--highlight-weight));
     background: rgba(255, 132, 70, 0.82);
-    box-shadow: 0 0 11px 2px rgba(255, 92, 40, 0.65);
+    box-shadow: 0 0 11px 2px rgba(255, 92, 40, calc(0.65 * var(--highlight-weight)));
   }
   100% {
     opacity: 0;
     transform: translate(var(--drift-x), var(--drift-y)) scale(1.45);
     background: rgba(255, 172, 125, 0.4);
-    box-shadow: 0 0 7px 1px rgba(255, 145, 98, 0.35);
+    box-shadow: 0 0 7px 1px rgba(255, 145, 98, calc(0.35 * var(--highlight-weight)));
   }
 }
 
