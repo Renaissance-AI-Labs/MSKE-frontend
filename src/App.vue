@@ -11,6 +11,7 @@
     </div>
     
     <Footer />
+    <BottomNavBar />
     
     <transition name="modal">
       <ConnectWalletModal v-if="isModalVisible" @close="closeModal" />
@@ -21,6 +22,7 @@
 <script>
 import Header from './components/Header.vue';
 import Footer from './components/Footer.vue';
+import BottomNavBar from './components/BottomNavBar.vue';
 import ConnectWalletModal from './components/ConnectWalletModal.vue';
 import ToastNotification from './components/ToastNotification.vue';
 import { autoConnectWallet } from './services/wallet.js';
@@ -31,6 +33,7 @@ export default {
   components: {
     Header,
     Footer,
+    BottomNavBar,
     ConnectWalletModal,
     ToastNotification
   },
@@ -66,6 +69,13 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+html,
+body,
+#app {
+  width: 100%;
+  overflow-x: hidden;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -80,8 +90,10 @@ a {
 /* Removed visual styles, retained necessary layout if any */
 #wrapper {
   padding-top: 64px; /* Ensure content doesn't hide behind fixed header */
+  padding-bottom: 104px; /* Reserve space for bottom tab bar */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  overflow-x: hidden;
 }
 </style>
