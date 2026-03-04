@@ -482,7 +482,7 @@ watch(() => [props.isConnected, props.userAddress], () => {
 
 .carousel-controls {
   display: flex;
-  justify-content: center;
+  justify-content: space-between;
 }
 
 .carousel-controls > * + * {
