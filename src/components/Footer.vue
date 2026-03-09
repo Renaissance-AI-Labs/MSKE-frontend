@@ -27,7 +27,7 @@
         <article class="footer-intro" aria-label="MSKE Introduction">
           <p class="intro-text">
             <span class="drop-cap">M</span>
-            SKE is a homogeneous inscription token deployed and publicly minted using the Bitcoin Stamps protocol under the SRC-20 standard, a form of Bitcoin inscription.
+            {{ t('footer.intro') }}
           </p>
         </article>
 
@@ -42,9 +42,13 @@
 
 <script>
 import { APP_ENV } from '@/services/environment';
+import { t } from '@/i18n';
 
 export default {
     name: 'Footer',
+    methods: {
+        t
+    },
     computed: {
         appVersion() {
             return APP_ENV === 'PROD' ? 'P-1.0' : 'T-1.0';

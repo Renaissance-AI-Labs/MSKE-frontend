@@ -74,6 +74,7 @@ const languagePacks = {
     'toast.bind.bindFailed': 'Bind failed, please check network',
     'toast.bind.copySuccess': 'Copied successfully',
     'toast.bind.copyFailed': 'Copy failed',
+    'footer.intro': 'SKE is a homogeneous inscription token deployed and publicly minted using the Bitcoin Stamps protocol under the SRC-20 standard, a form of Bitcoin inscription.',
   },
   'zh-cn': {
      'header.connectWallet': '连接钱包',
@@ -135,6 +136,7 @@ const languagePacks = {
      'toast.bind.bindFailed': '绑定失败，请检查网络后重试',
      'toast.bind.copySuccess': '复制成功',
      'toast.bind.copyFailed': '复制失败',
+     'footer.intro': 'SKE 是一种同质化铭文代币，基于 SRC-20 标准，通过 Bitcoin Stamps 协议部署并公开铸造，属于比特币铭文的一种形式。',
   },
   'zh-tw': {
      'header.connectWallet': '連接錢包',
@@ -196,6 +198,7 @@ const languagePacks = {
      'toast.bind.bindFailed': '綁定失敗，請檢查網絡後重試',
      'toast.bind.copySuccess': '複製成功',
      'toast.bind.copyFailed': '複製失敗',
+     'footer.intro': 'SKE 是一種同質化銘文代幣，基於 SRC-20 標準，透過 Bitcoin Stamps 協議部署並公開鑄造，屬於比特幣銘文的一種形式。',
   }
 };
 
