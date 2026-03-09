@@ -3,7 +3,6 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <p class="page-badge">MSKE</p>
       <h1 class="page-title">好友</h1>
       <p class="page-subtitle">管理推荐关系与好友列表</p>
     </section>
@@ -78,8 +77,15 @@
               {{ t('bind.copy') }}
             </button>
           </div>
-          <p class="section-hint" v-if="isBound">{{ t('bind.copyHint') }}</p>
-          <p class="section-hint" v-else>{{ t('bind.copyHintLocked') }}</p>
+          <p class="copy-hint-inline" :class="{ locked: !isBound }">
+            <svg class="copy-hint-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                fill="currentColor"
+                d="M12 3a9 9 0 1 0 9 9a9 9 0 0 0-9-9m0 13.2a1.1 1.1 0 1 1 1.1-1.1A1.1 1.1 0 0 1 12 16.2m1.2-4.2a.75.75 0 0 1-1.5 0V7.9a.75.75 0 1 1 1.5 0Z"
+              />
+            </svg>
+            <span>{{ isBound ? t('bind.copyHint') : t('bind.copyHintLocked') }}</span>
+          </p>
         </div>
       </div>
 
@@ -143,12 +149,6 @@
 
           <div class="friend-card" v-if="currentFriend">
             <div class="card-header">
-              <div class="avatar-circle">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-              </div>
               <span class="address">{{ formatWalletAddress(currentFriend.address) }}</span>
             </div>
 
@@ -647,8 +647,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .page-shell {
-  min-height: 100vh;
-  padding: 14px 20px 120px;
+  /* min-height: 100vh; */
+  padding: 10px 20px 120px;
   position: relative;
   background-color: #050302;
   overflow-x: hidden;
@@ -671,20 +671,13 @@ onBeforeUnmount(() => {
   position: relative;
   z-index: 1;
   max-width: 720px;
-  margin: 18px auto 18px;
+  margin: 10px auto 10px;
   text-align: center;
 }
 
-.page-badge {
-  margin: 0;
-  color: #f6a362;
-  letter-spacing: 0.16em;
-  font-size: 12px;
-}
-
 .page-title {
-  margin: 8px 0 10px;
-  font-size: clamp(2rem, 8vw, 3rem);
+  margin: 0 0 6px;
+  font-size: clamp(1.6rem, 6.2vw, 2.25rem);
   font-weight: 800;
   background: linear-gradient(180deg, #fff 0%, #ffcda5 50%, #ff4500 100%);
   -webkit-background-clip: text;
@@ -695,7 +688,8 @@ onBeforeUnmount(() => {
 .page-subtitle {
   margin: 0;
   color: rgba(234, 215, 198, 0.78);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  font-size: 0.84rem;
 }
 
 .panel {
@@ -719,41 +713,43 @@ onBeforeUnmount(() => {
 }
 
 .tabs {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-bottom: 16px;
-  padding: 6px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  align-items: center;
+  margin-bottom: 14px;
+  border: 1px solid rgba(255, 99, 50, 0.26);
+  border-radius: 11px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.2);
 }
 
 .tab-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  border: 1px solid rgba(255, 69, 0, 0.25);
-  background: rgba(255, 69, 0, 0.08);
+  border: none;
+  background: transparent;
   color: #cfb49c;
-  min-height: 44px;
-  border-radius: 10px;
+  width: 50%;
+  min-height: 40px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.2s ease;
   letter-spacing: 0.04em;
   font-weight: 600;
+  font-size: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 
 .tab-btn.active {
   color: #ffe0c7;
   background: rgba(255, 69, 0, 0.22);
-  box-shadow: inset 0 0 0 1px rgba(255, 113, 68, 0.4);
 }
 
 .tab-btn:hover {
   color: #ffe0c7;
+}
+
+.tab-btn + .tab-btn {
+  border-left: 1px solid rgba(255, 99, 50, 0.26);
 }
 
 .tab-content {
@@ -792,23 +788,25 @@ onBeforeUnmount(() => {
 }
 
 .friend-section > * + * {
-  margin-top: 8px;
+  margin-top: 7px;
 }
 
 .link-section {
-  margin-top: 24px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 171, 119, 0.12);
 }
 
 .section-title {
   margin: 0;
-  font-size: 0.92rem;
-  color: #ffcfac;
+  font-size: 0.9rem;
+  color: #f6cca9;
 }
 
 .section-desc {
   margin: 0;
-  color: #d7c0b0;
-  font-size: 0.82rem;
+  color: #bea897;
+  font-size: 0.8rem;
   line-height: 1.4;
 }
 
@@ -818,7 +816,7 @@ onBeforeUnmount(() => {
 
 .compact-hint {
   margin: 2px 0 0;
-  color: #bba392;
+  color: #a99384;
   font-size: 0.78rem;
 }
 
@@ -829,10 +827,16 @@ onBeforeUnmount(() => {
 .input-box {
   display: flex;
   align-items: center;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 6px;
-  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 184, 140, 0.08);
+  border-radius: 8px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.02);
+  box-shadow: inset 0 -1px 0 rgba(255, 160, 110, 0.2);
+}
+
+.input-box:focus-within {
+  border-color: rgba(255, 150, 95, 0.22);
+  box-shadow: inset 0 -1px 0 rgba(255, 160, 110, 0.42);
 }
 
 .input-box > * + * {
@@ -843,7 +847,7 @@ onBeforeUnmount(() => {
   width: 100%;
   border: none;
   background: transparent;
-  color: #fff;
+  color: #f8ece3;
   outline: none;
   font-size: 0.85rem;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
@@ -863,21 +867,29 @@ onBeforeUnmount(() => {
 }
 
 .btn-action {
-  border: 1px solid rgba(255, 130, 60, 0.45);
-  background: rgba(255, 92, 31, 0.14);
-  color: #ffd0a9;
-  padding: 7px 10px;
-  border-radius: 8px;
+  border: 1px solid rgba(255, 146, 88, 0.36);
+  background: rgba(255, 122, 64, 0.08);
+  color: #ffccaa;
+  width: 5.8em;
+  min-width: 5.8em;
+  height: 32px;
+  padding: 0;
+  border-radius: 7px;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
-  font-size: 0.8rem;
+  font-size: 0.79rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
 }
 
 .btn-action:hover:not(:disabled) {
-  border-color: #ff4500;
-  background: rgba(255, 69, 0, 0.28);
-  color: #fff;
+  border-color: rgba(255, 137, 73, 0.72);
+  background: rgba(255, 122, 64, 0.16);
+  color: #ffe7d5;
 }
 
 .btn-action:disabled {
@@ -886,12 +898,13 @@ onBeforeUnmount(() => {
 }
 
 .input-box.referral-box {
-  min-height: 58px;
+  min-height: 48px;
 }
 
 .input-box.disabled {
-  border-color: rgba(255, 255, 255, 0.08);
-  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(201, 179, 162, 0.1);
+  background: rgba(255, 255, 255, 0.015);
+  box-shadow: inset 0 -1px 0 rgba(188, 166, 149, 0.2);
 }
 
 .input-box.disabled .code-input {
@@ -900,10 +913,25 @@ onBeforeUnmount(() => {
   -webkit-text-fill-color: #fff;
 }
 
-.section-hint {
-  margin: -2px 0 0;
-  color: #bba392;
-  font-size: 0.76rem;
+.copy-hint-inline {
+  margin: 3px 0 0;
+  color: #bda693;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.copy-hint-inline.locked {
+  color: #bca695;
+}
+
+.copy-hint-icon {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 13px;
+  color: #e6b388;
 }
 
 .stats-card {
@@ -976,57 +1004,52 @@ onBeforeUnmount(() => {
 }
 
 .friend-card {
-  border: 1px solid rgba(255, 130, 60, 0.25);
-  border-radius: 12px;
-  padding: 10px;
-  background: linear-gradient(145deg, rgba(32, 18, 11, 0.72), rgba(14, 9, 7, 0.82));
+  border: 1px solid rgba(255, 184, 140, 0.1);
+  border-radius: 10px;
+  padding: 10px 8px 8px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .card-header {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  padding: 0 2px 8px;
+  border-bottom: 1px solid rgba(255, 188, 150, 0.1);
 }
 
 .card-header > * + * {
   margin-left: 8px;
 }
 
-.avatar-circle {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ffb073;
-  background: rgba(255, 130, 60, 0.15);
-}
-
 .address {
-  font-size: 0.88rem;
-  color: #fff;
+  font-size: 0.84rem;
+  color: #f8ece3;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
 }
 
 .friend-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin-top: 10px;
+  gap: 0;
+  margin-top: 7px;
 }
 
 .stat-box {
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 10px;
-  padding: 8px 6px;
+  border: none;
+  border-radius: 0;
+  padding: 6px 4px;
   text-align: center;
-  background: rgba(0, 0, 0, 0.16);
+  background: transparent;
   display: grid;
 }
 
 .stat-box > * + * {
   margin-top: 3px;
+}
+
+.stat-box + .stat-box {
+  border-left: 1px solid rgba(255, 188, 150, 0.1);
 }
 
 .carousel-controls {

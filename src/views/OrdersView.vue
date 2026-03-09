@@ -3,7 +3,6 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <p class="page-badge">MSKE</p>
       <h1 class="page-title">订单</h1>
       <p class="page-subtitle">查看当前订单状态与历史记录</p>
     </section>
@@ -34,7 +33,7 @@
 <style scoped>
 .page-shell {
   min-height: 100vh;
-  padding: 14px 20px 120px;
+  padding: 10px 20px 120px;
   position: relative;
   background-color: #050302;
   overflow-x: hidden;
@@ -57,20 +56,13 @@
   position: relative;
   z-index: 1;
   max-width: 720px;
-  margin: 18px auto 18px;
+  margin: 10px auto 10px;
   text-align: center;
 }
 
-.page-badge {
-  margin: 0;
-  color: #f6a362;
-  letter-spacing: 0.16em;
-  font-size: 12px;
-}
-
 .page-title {
-  margin: 8px 0 10px;
-  font-size: clamp(2rem, 8vw, 3rem);
+  margin: 0 0 6px;
+  font-size: clamp(1.6rem, 6.2vw, 2.25rem);
   font-weight: 800;
   background: linear-gradient(180deg, #fff 0%, #ffcda5 50%, #ff4500 100%);
   -webkit-background-clip: text;
@@ -81,7 +73,8 @@
 .page-subtitle {
   margin: 0;
   color: rgba(234, 215, 198, 0.78);
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  font-size: 0.84rem;
 }
 
 .panel {

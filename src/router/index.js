@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import HomeView from '../views/HomeView.vue';
 import OrdersView from '../views/OrdersView.vue';
+import TradeView from '../views/TradeView.vue';
 import FriendsView from '../views/FriendsView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
 import { walletState } from '../services/wallet';
@@ -15,6 +16,11 @@ const routes = [
     path: '/orders',
     name: 'Orders',
     component: OrdersView,
+  },
+  {
+    path: '/trade',
+    name: 'Trade',
+    component: TradeView,
   },
   {
     path: '/friends',
