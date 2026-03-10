@@ -103,14 +103,6 @@
               </div>
               <div class="stat-divider"></div>
               <div class="stat-item">
-                <span class="stat-label">{{ t('friends.validFriendsCount') }}</span>
-                <span class="stat-value">
-                  {{ myStats.validFriendsCount }}
-                  <span v-if="myStats.validFriendsCount !== PLACEHOLDER" class="unit">{{ t('friends.peopleUnit') }}</span>
-                </span>
-              </div>
-              <div class="stat-divider"></div>
-              <div class="stat-item">
                 <span class="stat-label">{{ t('friends.myStake') }}</span>
                 <span class="stat-value">
                   {{ myStats.myStake }}
@@ -135,6 +127,13 @@
                 <span class="stat-value highlight">
                   {{ myStats.teamPerformance }}
                   <span v-if="myStats.teamPerformance !== PLACEHOLDER" class="unit">U</span>
+                </span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-item">
+                <span class="stat-label">{{ t('friends.myStarLevel') }}</span>
+                <span class="stat-value highlight">
+                  {{ formatStarLevel(myStats.starLevel) }}
                 </span>
               </div>
             </div>
@@ -235,6 +234,7 @@ import { walletState, formatAddress } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import referralAbi from '@/abis/referral.json';
+import stakingAbi from '@/abis/staking.json';
 import { t } from '@/i18n/index.js';
 
 const route = useRoute();
@@ -256,10 +256,10 @@ const referralTextarea = ref(null);
 
 const myStats = ref({
   friendsCount: PLACEHOLDER,
-  validFriendsCount: PLACEHOLDER,
   myStake: PLACEHOLDER,
   teamCount: PLACEHOLDER,
-  teamPerformance: PLACEHOLDER
+  teamPerformance: PLACEHOLDER,
+  starLevel: PLACEHOLDER
 });
 const friendList = ref([]);
 const currentCardIndex = ref(0);
@@ -311,6 +311,23 @@ const formatWalletAddress = (address) => {
   return formatAddress(address);
 };
 
+const formatStarLevel = (level) => {
+  if (level === PLACEHOLDER) return PLACEHOLDER;
+  if (level === 0) return t('friends.starLevelNone');
+  return t('friends.starLevelFormat', { star: level });
+};
+
+const formatAmount = (value, decimals = 18, precision = 2) => {
+  if (!value) return '0';
+  const text = ethers.formatUnits(value, decimals);
+  const numeric = Number(text);
+  if (!Number.isFinite(numeric)) return '0';
+  return numeric.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: precision
+  });
+};
+
 const getReadContract = async () => {
   const contractAddress = getContractAddress('Referral');
   if (!contractAddress || !window.ethereum) {
@@ -318,6 +335,15 @@ const getReadContract = async () => {
   }
   const provider = new ethers.BrowserProvider(window.ethereum);
   return new ethers.Contract(contractAddress, referralAbi, provider);
+};
+
+const getStakingReadContract = async () => {
+  const contractAddress = getContractAddress('Staking');
+  if (!contractAddress || !window.ethereum) {
+    return null;
+  }
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  return new ethers.Contract(contractAddress, stakingAbi, provider);
 };
 
 const getWriteContract = async () => {
@@ -512,10 +538,10 @@ const copyText = (text) => {
 const resetFriendsData = () => {
   myStats.value = {
     friendsCount: PLACEHOLDER,
-    validFriendsCount: PLACEHOLDER,
     myStake: PLACEHOLDER,
     teamCount: PLACEHOLDER,
-    teamPerformance: PLACEHOLDER
+    teamPerformance: PLACEHOLDER,
+    starLevel: PLACEHOLDER
   };
   friendList.value = [];
   currentCardIndex.value = 0;
@@ -536,6 +562,19 @@ const loadFriendsData = async () => {
 
     const referralCountRaw = await contract.getReferralCount(walletState.address);
     myStats.value.friendsCount = referralCountRaw.toString();
+
+    const stakingContract = await getStakingReadContract();
+    if (stakingContract) {
+      try {
+        const starLevelRaw = await stakingContract.userStarLevel(walletState.address);
+        myStats.value.starLevel = Number(starLevelRaw);
+
+        const teamInvestRaw = await stakingContract.teamTotalInvestValue(walletState.address);
+        myStats.value.teamPerformance = formatAmount(teamInvestRaw, 18, 2);
+      } catch (err) {
+        console.error('Failed to fetch staking stats:', err);
+      }
+    }
 
     const allChildren = [];
     let cursor = 0;
@@ -569,12 +608,26 @@ const loadFriendsData = async () => {
       uniqueChildren.map((address) => contract.getTeamCount(address))
     );
 
-    friendList.value = uniqueChildren.map((address, index) => ({
-      address,
-      friendStake: PLACEHOLDER,
-      teamCount: teamCountResults[index].status === 'fulfilled' ? teamCountResults[index].value.toString() : PLACEHOLDER,
-      teamPerformance: PLACEHOLDER
-    }));
+    let teamInvestResults = [];
+    if (stakingContract) {
+      teamInvestResults = await Promise.allSettled(
+        uniqueChildren.map((address) => stakingContract.teamTotalInvestValue(address))
+      );
+    }
+
+    friendList.value = uniqueChildren.map((address, index) => {
+      let teamPerformance = PLACEHOLDER;
+      if (teamInvestResults[index] && teamInvestResults[index].status === 'fulfilled') {
+        teamPerformance = formatAmount(teamInvestResults[index].value, 18, 2);
+      }
+
+      return {
+        address,
+        friendStake: PLACEHOLDER,
+        teamCount: teamCountResults[index].status === 'fulfilled' ? teamCountResults[index].value.toString() : PLACEHOLDER,
+        teamPerformance
+      };
+    });
 
     myStats.value.teamCount = uniqueChildren.length.toString();
 
