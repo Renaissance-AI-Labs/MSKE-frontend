@@ -40,6 +40,7 @@ const DEFAULT_DECIMALS = 18;
 const stakeAmount = ref('');
 const usdtBalanceRaw = ref(0n);
 const minStakeRaw = ref(ethers.parseUnits(String(DEFAULT_MIN_STAKE), DEFAULT_DECIMALS));
+const maxStakeRaw = ref(0n);
 const allowanceRaw = ref(0n);
 const hasReferrer = ref(false);
 const usdtDecimals = ref(DEFAULT_DECIMALS);
@@ -143,6 +144,7 @@ async function refreshCardData() {
   if (!hasWalletReady.value || !isContractsConfigured.value) {
     usdtBalanceRaw.value = 0n;
     minStakeRaw.value = ethers.parseUnits(String(DEFAULT_MIN_STAKE), DEFAULT_DECIMALS);
+    maxStakeRaw.value = 0n;
     allowanceRaw.value = 0n;
     hasReferrer.value = false;
     return;
@@ -157,10 +159,11 @@ async function refreshCardData() {
     const stake = new ethers.Contract(stakingAddress.value, stakingAbi, provider);
     const referral = new ethers.Contract(referralAddress.value, referralAbi, provider);
 
-    const [decimalsRaw, balanceRaw, minStakeAmountRaw, referrerAddress] = await Promise.all([
+    const [decimalsRaw, balanceRaw, minStakeAmountRaw, maxStakeAmountRaw, referrerAddress] = await Promise.all([
       usdt.decimals(),
       usdt.balanceOf(walletState.address),
       stake.minStakeAmount(),
+      stake.maxStakeAmount(),
       referral.getReferral(walletState.address)
     ]);
 
@@ -169,11 +172,13 @@ async function refreshCardData() {
     minStakeRaw.value = minStakeAmountRaw > 0n
       ? minStakeAmountRaw
       : ethers.parseUnits(String(DEFAULT_MIN_STAKE), usdtDecimals.value);
+    maxStakeRaw.value = maxStakeAmountRaw > 0n ? maxStakeAmountRaw : 0n;
     hasReferrer.value = Boolean(referrerAddress && referrerAddress !== ethers.ZeroAddress);
     allowanceRaw.value = await usdt.allowance(walletState.address, stakingAddress.value);
   } catch (error) {
     usdtBalanceRaw.value = 0n;
     minStakeRaw.value = ethers.parseUnits(String(DEFAULT_MIN_STAKE), usdtDecimals.value);
+    maxStakeRaw.value = 0n;
     allowanceRaw.value = 0n;
     hasReferrer.value = false;
   } finally {
@@ -261,6 +266,11 @@ async function handleStake() {
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
       showToast('已取消质押', 'warning');
+    } else if (
+      String(error?.reason || '').toLowerCase().includes('maxstakeamount')
+      || String(error?.message || '').toLowerCase().includes('maxstakeamount')
+    ) {
+      showToast('已达到当前时段限额，请稍后再试', 'warning');
     } else if (error?.reason) {
       showToast(error.reason, 'error');
     } else {
@@ -290,6 +300,10 @@ async function handlePrimaryAction() {
   }
   if (parsedStakeAmount.value < minStakeRaw.value) {
     showToast(`最低参与门槛为 ${minStakeText.value}U`, 'warning');
+    return;
+  }
+  if (maxStakeRaw.value > 0n && parsedStakeAmount.value > maxStakeRaw.value) {
+    showToast('已达到当前时段限额，请稍后再试', 'warning');
     return;
   }
   if (parsedStakeAmount.value > usdtBalanceRaw.value) {
