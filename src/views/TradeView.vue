@@ -80,7 +80,7 @@
       <p v-if="configurationHint" class="hint-line warning">{{ configurationHint }}</p>
       <p v-else-if="!walletState.isConnected" class="hint-line">请先连接钱包后再进行交易。</p>
 
-      <button class="confirm-btn" :disabled="swapDisabled" @click="executeSwap">
+      <button class="confirm-btn" :disabled="swapDisabled" @click="handleActionClick">
         {{ actionButtonText }}
       </button>
     </section>
@@ -108,14 +108,48 @@ import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
+import { t } from '@/i18n/index.js';
 import erc20Abi from '@/abis/erc20.json';
 import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
 
+const SLIPPAGE_STORAGE_KEY = 'mske.trade.slippage.byDirection.v1';
+const MAX_SLIPPAGE_PERCENT = 99;
+const DEFAULT_SLIPPAGE_BY_DIRECTION = {
+  sell: '35',
+  buy: '5'
+};
+
+const normalizeSlippageValue = (value, fallback) => {
+  const digitsOnly = String(value || '').replace(/[^\d]/g, '');
+  const limited = digitsOnly.slice(0, 2);
+  if (!limited) return fallback;
+  const numeric = Number.parseInt(limited, 10);
+  if (!Number.isFinite(numeric) || numeric < 0) return fallback;
+  const bounded = numeric > MAX_SLIPPAGE_PERCENT ? MAX_SLIPPAGE_PERCENT : numeric;
+  return String(bounded);
+};
+
+const loadSlippageCache = () => {
+  try {
+    const raw = localStorage.getItem(SLIPPAGE_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_SLIPPAGE_BY_DIRECTION };
+    const parsed = JSON.parse(raw);
+    return {
+      sell: normalizeSlippageValue(parsed?.sell, DEFAULT_SLIPPAGE_BY_DIRECTION.sell),
+      buy: normalizeSlippageValue(parsed?.buy, DEFAULT_SLIPPAGE_BY_DIRECTION.buy)
+    };
+  } catch (error) {
+    return { ...DEFAULT_SLIPPAGE_BY_DIRECTION };
+  }
+};
+
 const tradeDirection = ref('sell');
 const inputAmount = ref('');
-const slippage = ref('35');
+const slippageCache = ref(loadSlippageCache());
+const slippage = ref(slippageCache.value.sell);
 const balanceText = ref('--');
 const balanceRaw = ref(0n);
+const allowanceRaw = ref(0n);
 const estimatedOutText = ref('0');
 const minimumOutText = ref('0');
 const priceImpactText = ref('--');
@@ -150,10 +184,19 @@ const inputTokenAddress = computed(() => (tradeDirection.value === 'buy' ? usdtA
 const outputTokenAddress = computed(() => (tradeDirection.value === 'buy' ? mskeAddress.value : usdtAddress.value));
 
 const normalizedSlippage = computed(() => {
-  const value = Number(slippage.value);
+  const value = Number.parseInt(slippage.value, 10);
   if (!Number.isFinite(value) || value < 0) return 0;
-  if (value > 50) return 50;
+  if (value > MAX_SLIPPAGE_PERCENT) return MAX_SLIPPAGE_PERCENT;
   return value;
+});
+
+const inputAmountRaw = computed(() => {
+  if (!inputAmount.value || Number(inputAmount.value) <= 0) return null;
+  try {
+    return ethers.parseUnits(inputAmount.value, getInputDecimals());
+  } catch (error) {
+    return null;
+  }
 });
 
 const isSwapConfigured = computed(() => {
@@ -187,26 +230,24 @@ const swapDisabled = computed(() => {
   if (isExecuting.value || isQuoting.value) return true;
   if (!walletState.isConnected || !walletState.address) return true;
   if (!isSwapConfigured.value) return true;
-  if (!inputAmount.value || Number(inputAmount.value) <= 0) return true;
-  try {
-    const amountInRaw = ethers.parseUnits(inputAmount.value, getInputDecimals());
-    if (amountInRaw > balanceRaw.value) return true;
-  } catch (error) {
-    return true;
-  }
+  if (!inputAmountRaw.value || inputAmountRaw.value <= 0n) return true;
+  if (inputAmountRaw.value > balanceRaw.value) return true;
   return false;
+});
+
+const requiresApproval = computed(() => {
+  if (!walletState.isConnected || !walletState.address) return false;
+  if (!inputAmountRaw.value || inputAmountRaw.value <= 0n) return false;
+  return allowanceRaw.value < inputAmountRaw.value;
 });
 
 const actionButtonText = computed(() => {
   if (isExecuting.value) return '交易提交中...';
   if (isQuoting.value) return '报价计算中...';
-  if (inputAmount.value) {
-    try {
-      const amountInRaw = ethers.parseUnits(inputAmount.value, getInputDecimals());
-      if (amountInRaw > balanceRaw.value) return '余额不足';
-    } catch (error) {
-      return '输入金额无效';
-    }
+  if (inputAmount.value && !inputAmountRaw.value) return '输入金额无效';
+  if (inputAmountRaw.value && inputAmountRaw.value > balanceRaw.value) return '余额不足';
+  if (requiresApproval.value) {
+    return `授权 ${inputSymbol.value}`;
   }
   return '确认交易';
 });
@@ -295,6 +336,24 @@ const refreshBalance = async () => {
   }
 };
 
+const refreshAllowance = async () => {
+  if (!walletState.isConnected || !walletState.address || !isSwapConfigured.value) {
+    allowanceRaw.value = 0n;
+    return;
+  }
+  try {
+    const provider = getProvider();
+    if (!provider) {
+      allowanceRaw.value = 0n;
+      return;
+    }
+    const tokenContract = getTokenContract(inputTokenAddress.value, provider);
+    allowanceRaw.value = await tokenContract.allowance(walletState.address, routerAddress.value);
+  } catch (error) {
+    allowanceRaw.value = 0n;
+  }
+};
+
 const refreshQuote = async () => {
   if (!walletState.isConnected || !walletState.address || !isSwapConfigured.value) {
     clearQuote();
@@ -371,11 +430,35 @@ const scheduleQuoteRefresh = () => {
   }, 250);
 };
 
-const getDefaultSlippage = (direction) => (direction === 'sell' ? '35' : '5');
+const getDefaultSlippage = (direction) => DEFAULT_SLIPPAGE_BY_DIRECTION[direction] || DEFAULT_SLIPPAGE_BY_DIRECTION.sell;
+
+const saveSlippageCache = () => {
+  try {
+    localStorage.setItem(SLIPPAGE_STORAGE_KEY, JSON.stringify(slippageCache.value));
+  } catch (error) {
+    // Ignore storage errors (private mode / quota)
+  }
+};
+
+const getCachedSlippage = (direction) => {
+  const fallback = getDefaultSlippage(direction);
+  return normalizeSlippageValue(slippageCache.value[direction], fallback);
+};
+
+const updateSlippageForDirection = (direction, value) => {
+  const fallback = getDefaultSlippage(direction);
+  const normalized = normalizeSlippageValue(value, fallback);
+  slippageCache.value = {
+    ...slippageCache.value,
+    [direction]: normalized
+  };
+  saveSlippageCache();
+  return normalized;
+};
 
 const setTradeDirection = (direction) => {
   if (tradeDirection.value !== direction) {
-    slippage.value = getDefaultSlippage(direction);
+    slippage.value = getCachedSlippage(direction);
   }
   quoteRequestId.value += 1;
   tradeDirection.value = direction;
@@ -386,7 +469,12 @@ const onInputAmountChange = (event) => {
 };
 
 const onSlippageChange = (event) => {
-  slippage.value = limitDecimalPlaces(event.target.value, 2);
+  const edited = String(event.target.value || '').replace(/[^\d]/g, '').slice(0, 2);
+  if (edited === '') {
+    slippage.value = updateSlippageForDirection(tradeDirection.value, '0');
+    return;
+  }
+  slippage.value = updateSlippageForDirection(tradeDirection.value, edited);
 };
 
 const handleSetMax = () => {
@@ -400,33 +488,76 @@ const closeImpactConfirm = () => {
   isImpactConfirmVisible.value = false;
 };
 
-const executeSwap = async (skipImpactConfirm = false) => {
+const executeApprove = async () => {
   if (!walletState.isConnected || !walletState.address || !walletState.signer) {
-    showToast('Please connect wallet first.', 'warning');
+    showToast(t('toast.trade.connectWallet'), 'warning');
     return;
   }
   if (!isSwapConfigured.value) {
-    showToast('Swap contracts are not fully configured.', 'error');
+    showToast(t('toast.trade.contractNotConfigured'), 'error');
     return;
   }
-  if (!inputAmount.value || Number(inputAmount.value) <= 0) {
-    showToast('Please input a valid amount.', 'warning');
+  if (!inputAmountRaw.value || inputAmountRaw.value <= 0n) {
+    showToast(t('toast.trade.enterValidAmount'), 'warning');
     return;
   }
 
-  let amountInRaw;
   try {
-    amountInRaw = ethers.parseUnits(inputAmount.value, getInputDecimals());
+    isExecuting.value = true;
+    const signer = walletState.signer;
+    const inputToken = getTokenContract(inputTokenAddress.value, signer);
+    console.log('[Contract Call] approve() params:', {
+      token: inputTokenAddress.value,
+      spender: routerAddress.value,
+      amount: ethers.MaxUint256.toString(),
+      inputSymbol: inputSymbol.value
+    });
+    const approveTx = await inputToken.approve(routerAddress.value, ethers.MaxUint256);
+    showToast(t('toast.trade.approveSubmitted'), 'info');
+    await approveTx.wait();
+    showToast(t('toast.trade.approveSuccess'), 'success');
+    await refreshAllowance();
   } catch (error) {
-    showToast('Invalid amount format.', 'error');
+    if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
+      showToast(t('toast.trade.approveCancelled'), 'warning');
+    } else if (error?.reason) {
+      showToast(error.reason, 'error');
+    } else {
+      showToast(t('toast.trade.approveFailed'), 'error');
+    }
+  } finally {
+    isExecuting.value = false;
+  }
+};
+
+const executeSwap = async (skipImpactConfirm = false) => {
+  if (!walletState.isConnected || !walletState.address || !walletState.signer) {
+    showToast(t('toast.trade.connectWallet'), 'warning');
+    return;
+  }
+  if (!isSwapConfigured.value) {
+    showToast(t('toast.trade.contractNotConfigured'), 'error');
+    return;
+  }
+  if (!inputAmount.value || Number(inputAmount.value) <= 0) {
+    showToast(t('toast.trade.enterValidAmount'), 'warning');
+    return;
+  }
+  const amountInRaw = inputAmountRaw.value;
+  if (!amountInRaw) {
+    showToast(t('toast.trade.invalidAmountFormat'), 'error');
     return;
   }
   if (amountInRaw <= 0n) {
-    showToast('Amount should be greater than zero.', 'warning');
+    showToast(t('toast.trade.amountGreaterThanZero'), 'warning');
     return;
   }
   if (amountInRaw > balanceRaw.value) {
-    showToast('Insufficient token balance.', 'warning');
+    showToast(t('toast.trade.insufficientBalance'), 'warning');
+    return;
+  }
+  if (requiresApproval.value) {
+    showToast(t('toast.trade.approveFirst'), 'warning');
     return;
   }
 
@@ -434,7 +565,7 @@ const executeSwap = async (skipImpactConfirm = false) => {
     isExecuting.value = true;
     await refreshBalance();
     if (amountInRaw > balanceRaw.value) {
-      showToast('Insufficient token balance.', 'warning');
+      showToast(t('toast.trade.insufficientBalance'), 'warning');
       return;
     }
 
@@ -446,22 +577,25 @@ const executeSwap = async (skipImpactConfirm = false) => {
     }
 
     const signer = walletState.signer;
-    const inputToken = getTokenContract(inputTokenAddress.value, signer);
     const routerContract = getRouterContract(signer);
     const address = walletState.address;
-
-    const allowance = await inputToken.allowance(address, routerAddress.value);
-    if (allowance < amountInRaw) {
-      const approveTx = await inputToken.approve(routerAddress.value, ethers.MaxUint256);
-      showToast('Approving token spend...', 'info');
-      await approveTx.wait();
-      showToast('Token approved.', 'success');
-    }
 
     const slippageBps = Math.round(normalizedSlippage.value * 100);
     const minOutRaw = quoteAmountOutRaw.value * BigInt(10000 - slippageBps) / 10000n;
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
     const path = [inputTokenAddress.value, outputTokenAddress.value];
+    console.log('[Contract Call] swapExactTokensForTokensSupportingFeeOnTransferTokens params:', {
+      tradeDirection: tradeDirection.value,
+      inputSymbol: inputSymbol.value,
+      outputSymbol: outputSymbol.value,
+      amountInRaw: amountInRaw.toString(),
+      minOutRaw: minOutRaw.toString(),
+      slippagePercent: normalizedSlippage.value.toFixed(2),
+      slippageBps,
+      path,
+      to: address,
+      deadline: deadline.toString()
+    });
     const swapTx = await routerContract.swapExactTokensForTokensSupportingFeeOnTransferTokens(
       amountInRaw,
       minOutRaw,
@@ -469,26 +603,34 @@ const executeSwap = async (skipImpactConfirm = false) => {
       address,
       deadline
     );
-    showToast('Transaction submitted.', 'success');
+    showToast(t('toast.trade.swapSubmitted'), 'success');
     await swapTx.wait();
-    showToast('Swap completed successfully.', 'success');
+    showToast(t('toast.trade.swapSuccess'), 'success');
 
     inputAmount.value = '';
     clearQuote();
     await refreshBalance();
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
-      showToast('Transaction cancelled.', 'warning');
+      showToast(t('toast.trade.swapCancelled'), 'warning');
     } else if (error?.message === 'INVALID_QUOTE') {
-      showToast('Unable to get a valid quote. Please try again.', 'error');
+      showToast(t('toast.trade.invalidQuote'), 'error');
     } else if (error?.reason) {
       showToast(error.reason, 'error');
     } else {
-      showToast('Swap failed. Please try again.', 'error');
+      showToast(t('toast.trade.swapFailed'), 'error');
     }
   } finally {
     isExecuting.value = false;
   }
+};
+
+const handleActionClick = async () => {
+  if (requiresApproval.value) {
+    await executeApprove();
+    return;
+  }
+  await executeSwap();
 };
 
 const confirmImpactAndSwap = async () => {
@@ -500,6 +642,7 @@ watch(
   () => [walletState.address, walletState.isConnected, tradeDirection.value],
   async () => {
     await refreshBalance();
+    await refreshAllowance();
     scheduleQuoteRefresh();
   }
 );
@@ -514,6 +657,7 @@ watch(
 onMounted(async () => {
   await refreshTokenMeta();
   await refreshBalance();
+  await refreshAllowance();
   await refreshQuote();
 });
 

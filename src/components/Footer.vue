@@ -60,7 +60,7 @@ export default {
 <style scoped lang="scss">
 .footer {
   position: relative;
-  margin-top: 100px;
+  margin-top: 50px;
   padding: 30px 0 calc(112px + env(safe-area-inset-bottom, 0px));
   background: rgba(7, 6, 6, 0.84);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
