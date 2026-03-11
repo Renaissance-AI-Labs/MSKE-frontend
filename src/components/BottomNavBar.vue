@@ -14,39 +14,40 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, ref, computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { t } from '@/i18n/index.js';
 
 const route = useRoute();
 const isNavVisible = ref(true);
 let revealTimer = null;
 
-const navItems = [
+const navItems = computed(() => [
   {
     name: 'Home',
     path: '/',
-    label: '首页',
+    label: t('nav.home'),
     icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5.5v-6h-5v6H4a1 1 0 0 1-1-1v-8.5Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>`
   },
   {
     name: 'Orders',
     path: '/orders',
-    label: '订单',
+    label: t('nav.orders'),
     icon: `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`
   },
   // {
   //   name: 'Trade',
   //   path: '/trade',
-  //   label: '交易',
+  //   label: t('nav.trade'),
   //   icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m11 4 3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 17H10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m13 14-3 3 3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
   // },
   {
     name: 'Friends',
     path: '/friends',
-    label: '好友',
+    label: t('nav.friends'),
     icon: `<svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="10.5" r="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M13 19a3.8 3.8 0 0 1 7.5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`
   }
-];
+]);
 
 const handleScroll = () => {
   isNavVisible.value = false;

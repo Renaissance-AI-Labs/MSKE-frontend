@@ -3,8 +3,8 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <h1 class="page-title">好友</h1>
-      <p class="page-subtitle">管理推荐关系与好友列表</p>
+      <h1 class="page-title">{{ t('friends.pageTitle') }}</h1>
+      <p class="page-subtitle">{{ t('friends.pageSubtitle') }}</p>
     </section>
 
     <section class="panel">
@@ -15,14 +15,14 @@
           :class="{ active: activeTab === 'recommendations' }"
           @click="activeTab = 'recommendations'"
         >
-          我的推荐
+          {{ t('friends.tab.recommendations') }}
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'friends' }"
           @click="activeTab = 'friends'"
         >
-          我的好友
+          {{ t('friends.tab.friends') }}
         </button>
       </div>
 
@@ -149,8 +149,9 @@
             <div class="stats-row-divider"></div>
 
             <div class="stats-row star-counts-row">
+              <div class="star-count-title">{{ t('friends.friendStarLevel') }}</div>
               <div class="star-count-item" v-for="star in 7" :key="star">
-                <span class="star-label">V{{ star }}</span>
+                <span class="star-label">{{ star }}{{ t('friends.star') }}</span>
                 <span class="star-value">{{ myStats.downlineStarCounts[star - 1] }}</span>
               </div>
             </div>
@@ -165,7 +166,7 @@
 
           <div v-if="isLoadingFriends" class="loading-state">
             <div class="spinner"></div>
-            <p>加载中...</p>
+            <p>{{ t('friends.loading') }}</p>
           </div>
           <template v-else>
             <div class="friend-card" v-if="currentFriend">
@@ -1108,6 +1109,14 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 4px 0;
+}
+
+.star-count-title {
+  color: #d7c0b0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-right: 8px;
+  white-space: nowrap;
 }
 
 .star-count-item {

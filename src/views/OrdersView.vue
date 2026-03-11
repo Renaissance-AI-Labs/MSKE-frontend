@@ -3,8 +3,8 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <h1 class="page-title">订单</h1>
-      <p class="page-subtitle">查看当前订单状态与历史记录</p>
+      <h1 class="page-title">{{ t('orders.title') }}</h1>
+      <p class="page-subtitle">{{ t('orders.subtitle') }}</p>
     </section>
 
     <section class="panel">
@@ -12,60 +12,51 @@
 
       <div class="top-control-bar">
         <div class="tabs">
-          <button class="tab-btn" :class="{ active: activeStatus === 0 }" @click="switchStatus(0)">进行中</button>
-          <button class="tab-btn" :class="{ active: activeStatus === 1 }" @click="switchStatus(1)">已赎回</button>
+          <button class="tab-btn" :class="{ active: activeStatus === 0 }" @click="switchStatus(0)">{{ t('orders.tab.active') }}</button>
+          <button class="tab-btn" :class="{ active: activeStatus === 1 }" @click="switchStatus(1)">{{ t('orders.tab.redeemed') }}</button>
         </div>
 
-        <div class="stats-card-vertical">
+        <div v-if="activeStatus === 0" class="stats-card-vertical">
           <div class="stat-item">
-            <p class="stat-label">总待领收益</p>
+            <p class="stat-label">{{ t('orders.totalPendingReward') }}</p>
             <p class="stat-value">{{ totalPendingRewardUsdtText }} U <span class="sub-value">(≈ {{ totalPendingRewardMskeText }} MSKE)</span></p>
           </div>
           <div class="stat-item">
-            <p class="stat-label">当前订单数</p>
+            <p class="stat-label">{{ t('orders.currentOrders') }}</p>
             <p class="stat-value">{{ totalRecords }}</p>
           </div>
         </div>
       </div>
 
       <div class="order-list-container">
-        <p v-if="!walletState.isConnected" class="hint-line">请先连接钱包后查看订单。</p>
-        <p v-else-if="loadingRecords && recordList.length === 0" class="hint-line">订单加载中...</p>
+        <p v-if="!walletState.isConnected" class="hint-line">{{ t('orders.connectWalletHint') }}</p>
+        <p v-else-if="loadingRecords && recordList.length === 0" class="hint-line">{{ t('orders.loading') }}</p>
 
         <div v-if="walletState.isConnected && recordList.length > 0" class="order-list">
           <article v-for="record in recordList" :key="record.key" class="order-card">
             <div class="order-header">
               <div class="order-title-wrap">
                 <div class="order-title-row">
-                  <p class="order-title">订单 #{{ record.displayIndex }}</p>
+                  <p class="order-title">{{ t('orders.orderNumber', { index: record.displayIndex }) }}</p>
                   <span class="order-time">{{ record.stakeTimeText }}</span>
                 </div>
-                <p class="order-days">已持有 <span class="highlight-days">{{ record.holdDays }}</span> 天</p>
+                <p class="order-days" v-html="t('orders.heldDays', { days: `<span class='highlight-days'>${record.holdDays}</span>` })"></p>
               </div>
             </div>
 
           <div class="order-content-grid">
             <div class="info-block">
-              <div class="order-grid">
+              <div class="order-grid-horizontal">
                 <div class="row">
-                  <span class="row-label">质押本金</span>
+                  <span class="row-label">{{ t('orders.stakePrincipal') }}</span>
                   <span class="row-value strong">{{ record.amountText }} U</span>
                 </div>
-                <div class="row">
-                  <span class="row-label">LP 份额</span>
-                  <span class="row-value">{{ record.lpAmountText }}<span class="sub-value"> (≈ {{ record.lpUAmountText }} U)</span></span>
-                </div>
-              </div>
-            </div>
-
-            <div class="info-block compact">
-              <div class="order-grid">
-                <div class="row">
-                  <span class="row-label">当前日收益率</span>
+                <div class="row" v-if="activeStatus === 0">
+                  <span class="row-label">{{ t('orders.dailyRewardRate') }}</span>
                   <span class="row-value highlight">{{ record.dailyRewardRateText }}</span>
                 </div>
                 <div class="row" v-if="activeStatus === 0">
-                  <span class="row-label">当前赎回比例</span>
+                  <span class="row-label">{{ t('orders.currentUnstakeRate') }}</span>
                   <span class="row-value warn">{{ record.unstakeRateText }}</span>
                 </div>
               </div>
@@ -74,34 +65,34 @@
 
           <div class="info-block full-width" v-if="activeStatus === 0">
             <div class="row row-horizontal">
-              <span class="row-label">待领收益</span>
+              <span class="row-label">{{ t('orders.pendingReward') }}</span>
               <span class="row-value highlight">{{ record.pendingRewardUsdtText }} U<span class="sub-value"> (≈ {{ record.pendingRewardMskeText }} MSKE)</span></span>
             </div>
           </div>
 
             <div class="order-actions" v-if="activeStatus === 0">
               <button class="action-btn" :disabled="actionLoading" @click="handleHarvest(record)">
-                {{ actionLoading && pendingHarvestRecord === record.key ? actionStatusText : '领取收益' }}
+                {{ actionLoading && pendingHarvestRecord === record.key ? actionStatusText : t('orders.action.harvest') }}
               </button>
               <button class="action-btn danger" :disabled="actionLoading" @click="openUnstakeConfirm(record)">
-                赎回
+                {{ t('orders.action.unstake') }}
               </button>
             </div>
           </article>
 
           <div v-if="totalPages > 1" class="pagination-controls">
             <button class="page-btn" :disabled="currentPage <= 1 || loadingRecords || actionLoading" @click="prevPage">
-              上一页
+              {{ t('orders.pagination.prev') }}
             </button>
             <span class="page-info">{{ currentPage }} / {{ totalPages }}</span>
             <button class="page-btn" :disabled="currentPage >= totalPages || loadingRecords || actionLoading" @click="nextPage">
-              下一页
+              {{ t('orders.pagination.next') }}
             </button>
           </div>
         </div>
 
         <div v-else-if="walletState.isConnected && !loadingRecords" class="empty-state">
-          <p>暂无订单数据</p>
+          <p>{{ t('orders.noData') }}</p>
         </div>
       </div>
     </section>
@@ -109,14 +100,12 @@
     <transition name="modal">
       <div v-if="unstakeConfirmVisible" class="modal-mask" @click.self="closeUnstakeConfirm">
         <div class="modal-container">
-          <h3 class="modal-title">赎回确认</h3>
-          <p class="modal-desc">
-            根据您当前持有天数，当前赎回比例为 <span class="highlight-rate">{{ unstakeConfirmRateText }}</span>，剩余本金将回流底池。赎回后将<span class="highlight-warn">不再享受该笔订单分红、不可领取收益</span>。
-          </p>
+          <h3 class="modal-title">{{ t('orders.modal.title') }}</h3>
+          <p class="modal-desc" v-html="t('orders.modal.desc', { rate: `<span class='highlight-rate'>${unstakeConfirmRateText}</span>` })"></p>
           <div class="modal-actions">
-            <button class="modal-btn" @click="closeUnstakeConfirm" :disabled="actionLoading">取消</button>
+            <button class="modal-btn" @click="closeUnstakeConfirm" :disabled="actionLoading">{{ t('orders.modal.cancel') }}</button>
             <button class="modal-btn primary" :disabled="actionLoading" @click="confirmUnstake">
-              {{ actionLoading ? actionStatusText : '确认赎回' }}
+              {{ actionLoading ? actionStatusText : t('orders.modal.confirm') }}
             </button>
           </div>
         </div>
@@ -131,6 +120,7 @@ import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
+import { t } from '@/i18n/index.js';
 import stakingAbi from '@/abis/staking.json';
 import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
 
@@ -248,9 +238,12 @@ function pickRateByDays(days, thresholds, rates) {
   return picked;
 }
 
-function formatRatePercent(rawRate) {
+function formatRatePercent(rawRate, multiply100 = false) {
   if (!basePercent.value || basePercent.value <= 0n) return '--';
-  const scaled = Number(rawRate * 10000n / basePercent.value) / 100;
+  let scaled = Number(rawRate * 10000n / basePercent.value) / 100;
+  if (multiply100) {
+    scaled = scaled * 100;
+  }
   if (!Number.isFinite(scaled)) return '--';
   return `${scaled.toFixed(2)}%`;
 }
@@ -280,10 +273,8 @@ function normalizeRecord(record, fallbackIndex) {
     displayIndex: recordIndex + 1,
     holdDays,
     amountText: formatAmount(BigInt(record.amount || 0n), stakingDecimals.value),
-    lpAmountText: formatAmount(BigInt(record.lpAmount || 0n), stakingDecimals.value),
-    lpUAmountText: formatAmount(BigInt(record.lpUAmount || 0n), stakingDecimals.value),
     dailyRewardRateText: formatRatePercent(rewardRateRaw),
-    unstakeRateText: formatRatePercent(unstakeRateRaw),
+    unstakeRateText: formatRatePercent(unstakeRateRaw, true),
     stakeTimeText: formatStakeTime(record.stakeTime),
     pendingRewardUsdtText: '--',
     pendingRewardMskeText: '--'
@@ -449,29 +440,32 @@ async function nextPage() {
 
 async function handleHarvest(record) {
   if (!walletState.isConnected || !walletState.address) {
-    showToast('请先连接钱包', 'warning');
+    showToast(t('toast.orders.connectWallet'), 'warning');
     return;
   }
 
   actionLoading.value = true;
   pendingHarvestRecord.value = record.key;
-  actionStatusText.value = '等待签名...';
+  actionStatusText.value = t('orders.status.waitingSignature');
   try {
     const contract = await getWriteStakingContract();
     if (!contract) throw new Error('NO_CONTRACT');
+    console.log('[Contract Call] harvest() params:', {
+      indices: [record.recordIndex]
+    });
     const tx = await contract.harvest([record.recordIndex]);
-    actionStatusText.value = '领取中...';
-    showToast('领取交易已提交', 'success');
+    actionStatusText.value = t('orders.status.harvesting');
+    showToast(t('toast.orders.harvestSubmitted'), 'success');
     await tx.wait();
-    showToast('领取成功', 'success');
+    showToast(t('toast.orders.harvestSuccess'), 'success');
     await refreshAll();
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
-      showToast('已取消领取', 'warning');
+      showToast(t('toast.orders.harvestCancelled'), 'warning');
     } else if (error?.reason) {
       showToast(error.reason, 'error');
     } else {
-      showToast('领取失败，请稍后重试', 'error');
+      showToast(t('toast.orders.harvestFailed'), 'error');
     }
   } finally {
     actionLoading.value = false;
@@ -493,24 +487,27 @@ function closeUnstakeConfirm() {
 async function confirmUnstake() {
   if (!pendingUnstakeRecord.value) return;
   actionLoading.value = true;
-  actionStatusText.value = '等待签名...';
+  actionStatusText.value = t('orders.status.waitingSignature');
   try {
     const contract = await getWriteStakingContract();
     if (!contract) throw new Error('NO_CONTRACT');
+    console.log('[Contract Call] unstake() params:', {
+      indices: [pendingUnstakeRecord.value.recordIndex]
+    });
     const tx = await contract.unstake([pendingUnstakeRecord.value.recordIndex]);
-    actionStatusText.value = '赎回中...';
-    showToast('赎回交易已提交', 'success');
+    actionStatusText.value = t('orders.status.unstaking');
+    showToast(t('toast.orders.unstakeSubmitted'), 'success');
     await tx.wait();
-    showToast('赎回成功', 'success');
+    showToast(t('toast.orders.unstakeSuccess'), 'success');
     closeUnstakeConfirm();
     await refreshAll();
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
-      showToast('已取消赎回', 'warning');
+      showToast(t('toast.orders.unstakeCancelled'), 'warning');
     } else if (error?.reason) {
       showToast(error.reason, 'error');
     } else {
-      showToast('赎回失败，请稍后重试', 'error');
+      showToast(t('toast.orders.unstakeFailed'), 'error');
     }
   } finally {
     actionLoading.value = false;
@@ -616,10 +613,10 @@ onBeforeUnmount(() => {
 .stats-card-vertical {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid rgba(255, 109, 60, 0.15);
   border-radius: 10px;
-  padding: 12px 16px;
+  padding: 4px 14px;
   background: linear-gradient(180deg, rgba(255, 88, 28, 0.04), rgba(255, 69, 0, 0.01));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -633,7 +630,7 @@ onBeforeUnmount(() => {
 
 .stat-item + .stat-item {
   border-top: 1px dashed rgba(255, 164, 118, 0.15);
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .stat-label {
@@ -714,7 +711,7 @@ onBeforeUnmount(() => {
 .order-card {
   border: 1px solid rgba(255, 124, 78, 0.2);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: linear-gradient(180deg, rgba(255, 89, 34, 0.08), rgba(255, 69, 0, 0.02));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
@@ -723,8 +720,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
-  padding-bottom: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
   border-bottom: 1px solid rgba(255, 164, 118, 0.15);
 }
 
@@ -789,59 +786,71 @@ onBeforeUnmount(() => {
 }
 
 .order-content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: start;
+  display: block;
+  margin-top: 4px;
 }
 
 .info-block {
-  padding: 2px 0;
+  padding: 0;
 }
 
-.info-block.full-width {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px dashed rgba(255, 164, 118, 0.15);
-}
-
-.info-block + .info-block:not(.full-width) {
-  margin-top: 0;
-  padding-top: 4px;
-  border-top: none;
-  padding-left: 12px;
-}
-
-.order-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2px;
+.order-grid-horizontal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .row {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  min-height: 28px;
+  min-height: 20px;
   font-size: 0.8rem;
-  gap: 2px;
+  /* gap: 2px; */
+  flex: 1;
 }
 
 .row-horizontal {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  min-height: auto;
+  gap: 8px;
 }
 
 .row-label {
   color: #cbb19d;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
 }
 
 .row-value {
   color: #f0d9c7;
   font-size: 0.85rem;
+}
+
+.info-block.full-width {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 164, 118, 0.15);
+}
+
+.info-block.full-width .row-horizontal .row-label {
+  white-space: nowrap;
+}
+
+.info-block.full-width .row-horizontal .row-value {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.info-block.full-width .row-horizontal {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  column-gap: 8px;
 }
 
 .row-value.strong {
@@ -864,7 +873,7 @@ onBeforeUnmount(() => {
 }
 
 .order-actions {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   gap: 8px;
 }
@@ -873,7 +882,7 @@ onBeforeUnmount(() => {
   flex: 1;
   border: 1px solid rgba(255, 130, 60, 0.45);
   border-radius: 8px;
-  min-height: 30px;
+  min-height: 28px;
   background: rgba(255, 92, 31, 0.14);
   color: #ffd0a9;
   font-size: 0.85rem;
