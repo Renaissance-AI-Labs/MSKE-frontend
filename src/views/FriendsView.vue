@@ -109,6 +109,14 @@
                   <span v-if="myStats.myStake !== PLACEHOLDER" class="unit">U</span>
                 </span>
               </div>
+              <div class="stat-divider"></div>
+              <div class="stat-item">
+                <span class="stat-label">{{ t('friends.directInvest') }}</span>
+                <span class="stat-value highlight">
+                  {{ myStats.directInvest }}
+                  <span v-if="myStats.directInvest !== PLACEHOLDER" class="unit">U</span>
+                </span>
+              </div>
             </div>
 
             <div class="stats-row-divider"></div>
@@ -135,6 +143,15 @@
                 <span class="stat-value highlight">
                   {{ formatStarLevel(myStats.starLevel) }}
                 </span>
+              </div>
+            </div>
+
+            <div class="stats-row-divider"></div>
+
+            <div class="stats-row star-counts-row">
+              <div class="star-count-item" v-for="star in 7" :key="star">
+                <span class="star-label">V{{ star }}</span>
+                <span class="star-value">{{ myStats.downlineStarCounts[star - 1] }}</span>
               </div>
             </div>
           </div>
@@ -257,9 +274,11 @@ const referralTextarea = ref(null);
 const myStats = ref({
   friendsCount: PLACEHOLDER,
   myStake: PLACEHOLDER,
+  directInvest: PLACEHOLDER,
   teamCount: PLACEHOLDER,
   teamPerformance: PLACEHOLDER,
-  starLevel: PLACEHOLDER
+  starLevel: PLACEHOLDER,
+  downlineStarCounts: Array(7).fill(PLACEHOLDER)
 });
 const friendList = ref([]);
 const currentCardIndex = ref(0);
@@ -539,9 +558,11 @@ const resetFriendsData = () => {
   myStats.value = {
     friendsCount: PLACEHOLDER,
     myStake: PLACEHOLDER,
+    directInvest: PLACEHOLDER,
     teamCount: PLACEHOLDER,
     teamPerformance: PLACEHOLDER,
-    starLevel: PLACEHOLDER
+    starLevel: PLACEHOLDER,
+    downlineStarCounts: Array(7).fill(PLACEHOLDER)
   };
   friendList.value = [];
   currentCardIndex.value = 0;
@@ -571,6 +592,18 @@ const loadFriendsData = async () => {
 
         const teamInvestRaw = await stakingContract.teamTotalInvestValue(walletState.address);
         myStats.value.teamPerformance = formatAmount(teamInvestRaw, 18, 2);
+
+        const directInvestRaw = await stakingContract.directTotalInvestValue(walletState.address);
+        myStats.value.directInvest = formatAmount(directInvestRaw, 18, 2);
+
+        const starPromises = [];
+        for (let i = 1; i <= 7; i++) {
+          starPromises.push(stakingContract.getDownlineStarCount(walletState.address, i));
+        }
+        const starResults = await Promise.allSettled(starPromises);
+        myStats.value.downlineStarCounts = starResults.map(res => 
+          res.status === 'fulfilled' ? res.value.toString() : PLACEHOLDER
+        );
       } catch (err) {
         console.error('Failed to fetch staking stats:', err);
       }
@@ -1014,6 +1047,38 @@ onBeforeUnmount(() => {
 
 .stat-item > * + * {
   margin-top: 3px;
+}
+
+.star-counts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.star-count-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.star-count-item > * + * {
+  margin-top: 4px;
+}
+
+.star-label {
+  color: #d7c0b0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.star-value {
+  color: #ffb073;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
 }
 
 .stat-divider {

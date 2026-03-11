@@ -1,6 +1,5 @@
 <template>
-  <section class="dividend-card">
-    <div class="card-decor"></div>
+  <section class="dividend-card" :class="{ 'is-visible': isVisible }">
     <h2 class="card-title">联创分红</h2>
     <p class="card-desc">满足三星及以上的用户可享受分红池收益。</p>
 
@@ -39,6 +38,7 @@ const totalRewardsRaw = ref(0n);
 const usdtDecimals = ref(DEFAULT_DECIMALS);
 const loadingData = ref(false);
 const harvesting = ref(false);
+const isVisible = ref(false);
 
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const dividendPoolAddress = computed(() => getContractAddress('NodeDividendPool'));
@@ -183,6 +183,11 @@ watch(
 );
 
 onMounted(async () => {
+  // 延迟触发入场动画，比质押卡片晚一点，形成错落感
+  setTimeout(() => {
+    isVisible.value = true;
+  }, 300);
+
   await refreshCardData();
 });
 </script>
@@ -192,45 +197,49 @@ onMounted(async () => {
   width: 100%;
   max-width: 600px;
   border-radius: 16px;
-  border: 1px solid rgba(255, 69, 0, 0.18);
-  background: rgba(20, 10, 5, 0.35);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(8px);
-  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+  background: rgba(10, 10, 10, 0.2);
+  backdrop-filter: blur(4px);
+  padding: 12px 14px;
   color: #fff;
-  transition: all 0.2s ease;
+  transition: opacity 0.8s cubic-bezier(0.22, 1, 0.36, 1), transform 0.8s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease, background-color 0.3s ease;
   overflow: hidden;
+  
+  /* 初始状态：向上偏移且透明 */
+  opacity: 0;
+  transform: translateY(-30px) scale(0.96);
 }
 
-.dividend-card:hover {
-  border-color: rgba(255, 69, 0, 0.35);
+.dividend-card.is-visible {
+  /* 最终状态：回到原位且完全不透明 */
+  opacity: 1;
+  transform: translateY(0) scale(1);
 }
 
-.card-decor {
-  height: 3px;
-  margin: -14px -14px 12px;
-  background: linear-gradient(90deg, transparent 0%, rgba(255, 69, 0, 0.55) 50%, transparent 100%);
+.dividend-card.is-visible:hover {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 15, 15, 0.3);
 }
 
 .card-title {
   margin: 0;
-  font-size: 1.2rem;
-  color: #ffd6b5;
+  font-size: 1rem;
+  color: #bfa897;
 }
 
 .card-desc {
-  margin: 8px 0 0;
-  color: #d0b9a8;
-  font-size: 0.84rem;
-  line-height: 1.5;
+  margin: 6px 0 0;
+  color: #8f7c70;
+  font-size: 0.8rem;
+  line-height: 1.4;
 }
 
 .info-wrap {
-  margin-top: 16px;
-  background: rgba(14, 9, 7, 0.6);
+  margin-top: 14px;
+  background: rgba(0, 0, 0, 0.2);
   border-radius: 10px;
-  padding: 12px;
-  border: 1px solid rgba(255, 114, 67, 0.15);
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.03);
 }
 
 .info-item {
@@ -267,13 +276,13 @@ onMounted(async () => {
 
 .action-btn {
   width: 100%;
-  border: 1px solid rgba(255, 130, 60, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
-  min-height: 44px;
-  background: rgba(255, 92, 31, 0.14);
-  color: #ffd0a9;
-  font-size: 0.9rem;
-  font-weight: 600;
+  min-height: 40px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #bfa897;
+  font-size: 0.85rem;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
@@ -282,13 +291,13 @@ onMounted(async () => {
 }
 
 .action-btn.primary {
-  background: rgba(255, 69, 0, 0.22);
-  color: #ffe3cd;
+  background: rgba(255, 255, 255, 0.08);
+  color: #d7c0b0;
 }
 
 .action-btn:hover:not(:disabled) {
-  border-color: #ff4500;
-  background: rgba(255, 69, 0, 0.28);
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.12);
   color: #fff;
 }
 
@@ -300,10 +309,6 @@ onMounted(async () => {
 @media (max-width: 768px) {
   .dividend-card {
     padding: 12px;
-  }
-
-  .card-decor {
-    margin: -12px -12px 12px;
   }
 }
 </style>
