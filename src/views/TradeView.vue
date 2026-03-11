@@ -3,7 +3,7 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <h1 class="page-title">交易</h1>
+      <h1 class="page-title">闪兑</h1>
       <p class="page-subtitle">快捷买卖与一键 Swap</p>
     </section>
 
@@ -66,6 +66,12 @@
                 @input="onSlippageChange"
               />
               <span class="slippage-unit">%</span>
+              <span class="slippage-edit-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none">
+                  <path d="M4 20h4l10.2-10.2a1.6 1.6 0 0 0 0-2.3l-1.7-1.7a1.6 1.6 0 0 0-2.3 0L4 16v4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/>
+                  <path d="m12.8 7.2 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </span>
             </div>
           </div>
         </div>
@@ -107,7 +113,7 @@ import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
 
 const tradeDirection = ref('sell');
 const inputAmount = ref('');
-const slippage = ref('4');
+const slippage = ref('35');
 const balanceText = ref('--');
 const balanceRaw = ref(0n);
 const estimatedOutText = ref('0');
@@ -365,7 +371,12 @@ const scheduleQuoteRefresh = () => {
   }, 250);
 };
 
+const getDefaultSlippage = (direction) => (direction === 'sell' ? '35' : '5');
+
 const setTradeDirection = (direction) => {
+  if (tradeDirection.value !== direction) {
+    slippage.value = getDefaultSlippage(direction);
+  }
   quoteRequestId.value += 1;
   tradeDirection.value = direction;
 };
@@ -742,30 +753,50 @@ onBeforeUnmount(() => {
 }
 
 .slippage-input-wrap {
-  min-width: 86px;
-  height: 30px;
+  min-width: 112px;
+  height: 32px;
+  padding: 0 6px 0 10px;
   border-radius: 999px;
   border: 1px solid rgba(255, 114, 67, 0.35);
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  gap: 4px;
   background: rgba(14, 9, 7, 0.82);
 }
 
 .slippage-input {
-  width: 44px;
+  width: 54px;
   border: none;
   outline: none;
   background: transparent;
   color: #fff;
   text-align: right;
   font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .slippage-unit {
-  color: #fff;
-  margin-left: 2px;
+  color: #f3dfcf;
   font-size: 0.82rem;
+}
+
+.slippage-edit-icon {
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+  padding-left: 6px;
+  border-left: 1px solid rgba(255, 130, 60, 0.28);
+  color: rgba(255, 208, 169, 0.85);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.slippage-edit-icon svg {
+  width: 100%;
+  height: 100%;
 }
 
 .hint-line {
