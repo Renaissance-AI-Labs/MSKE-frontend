@@ -90,8 +90,8 @@ a {
 /* Removed visual styles, retained necessary layout if any */
 #wrapper {
   padding-top: 64px; /* Ensure content doesn't hide behind fixed header */
-  padding-bottom: 20px; /* Reserve space for bottom tab bar */
-  min-height: 100vh;
+  /* padding-bottom: 20px; Reserve space for bottom tab bar */
+  /* min-height: 100vh; */
   display: flex;
   flex-direction: column;
   overflow-x: hidden;

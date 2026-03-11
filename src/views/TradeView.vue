@@ -527,8 +527,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .page-shell {
-  min-height: 100vh;
-  padding: 10px 16px 120px;
+  /* min-height: 100vh; */
+  padding: 10px 16px;
   position: relative;
   background-color: #050302;
   overflow-x: hidden;
