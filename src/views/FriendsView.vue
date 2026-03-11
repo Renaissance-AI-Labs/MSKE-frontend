@@ -3,8 +3,8 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <h1 class="page-title">好友</h1>
-      <p class="page-subtitle">管理推荐关系与好友列表</p>
+      <h1 class="page-title">{{ t('friends.pageTitle') }}</h1>
+      <p class="page-subtitle">{{ t('friends.pageSubtitle') }}</p>
     </section>
 
     <section class="panel">
@@ -15,14 +15,14 @@
           :class="{ active: activeTab === 'recommendations' }"
           @click="activeTab = 'recommendations'"
         >
-          我的推荐
+          {{ t('friends.tab.recommendations') }}
         </button>
         <button
           class="tab-btn"
           :class="{ active: activeTab === 'friends' }"
           @click="activeTab = 'friends'"
         >
-          我的好友
+          {{ t('friends.tab.friends') }}
         </button>
       </div>
 
@@ -165,7 +165,7 @@
 
           <div v-if="isLoadingFriends" class="loading-state">
             <div class="spinner"></div>
-            <p>加载中...</p>
+            <p>{{ t('friends.loading') }}</p>
           </div>
           <template v-else>
             <div class="friend-card" v-if="currentFriend">

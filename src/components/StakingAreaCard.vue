@@ -3,31 +3,31 @@
     <div class="card-decor"></div>
     
     <div class="card-header">
-      <h2 class="card-title">生态质押</h2>
-      <p class="card-desc">质押 USDT 参与 MSKE 生态建设，获取每日线性释放收益。提前赎回将触发防砸盘机制，扣除相应违约金销毁。</p>
+      <h2 class="card-title">{{ t('staking.title') }}</h2>
+      <p class="card-desc">{{ t('staking.desc') }}</p>
     </div>
     
     <!-- 数据看板 (极简数据条) -->
     <div class="mini-dashboard">
       <div class="stat-row">
         <div class="stat-item">
-          <span class="stat-label">MSKE 币价</span>
+          <span class="stat-label">{{ t('staking.mskePrice') }}</span>
           <span class="stat-value">{{ tokenPrice }}<span class="unit">U</span></span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <span class="stat-label">底池深度</span>
+          <span class="stat-label">{{ t('staking.poolDepth') }}</span>
           <span class="stat-value">{{ reserveU }}<span class="unit">U</span></span>
         </div>
         <div class="stat-divider"></div>
         <div class="stat-item">
-          <span class="stat-label">防砸盘税率</span>
+          <span class="stat-label">{{ t('staking.dumpTaxRate') }}</span>
           <span class="stat-value highlight">{{ dumpTaxRate }}</span>
         </div>
       </div>
       <div class="stat-row secondary-row">
         <div class="stat-item">
-          <span class="stat-label">全网总质押</span>
+          <span class="stat-label">{{ t('staking.totalStaking') }}</span>
           <span class="stat-value">{{ totalStaking }}<span class="unit">U</span></span>
         </div>
         <div class="stat-divider hidden"></div>
@@ -36,7 +36,7 @@
         </div>
         <div class="stat-divider hidden"></div>
         <div class="stat-item">
-          <span class="stat-label">总销毁数量</span>
+          <span class="stat-label">{{ t('staking.totalBurned') }}</span>
           <span class="stat-value">{{ totalBurned }}<span class="unit">MSKE</span></span>
         </div>
       </div>
@@ -44,8 +44,8 @@
 
     <div class="input-wrap">
       <div class="input-header">
-        <label class="input-label">质押 USDT</label>
-        <span class="balance-hint">余额: {{ usdtBalanceText }}</span>
+        <label class="input-label">{{ t('staking.stakeUsdt') }}</label>
+        <span class="balance-hint">{{ t('staking.balance', { amount: usdtBalanceText }) }}</span>
       </div>
       <div class="input-box">
         <input
@@ -74,6 +74,7 @@ import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
+import { t } from '@/i18n/index.js';
 import erc20Abi from '@/abis/erc20.json';
 import stakingAbi from '@/abis/staking.json';
 import referralAbi from '@/abis/referral.json';
@@ -132,7 +133,7 @@ const parsedStakeAmount = computed(() => {
 
 const usdtBalanceText = computed(() => formatAmount(usdtBalanceRaw.value, usdtDecimals.value));
 const minStakeText = computed(() => formatAmount(minStakeRaw.value, usdtDecimals.value));
-const amountPlaceholder = computed(() => `最少投入${minStakeText.value}U`);
+const amountPlaceholder = computed(() => t('staking.minStakePlaceholder', { amount: minStakeText.value }));
 const hasValidAmount = computed(() => Boolean(parsedStakeAmount.value && parsedStakeAmount.value > 0n));
 const needsApproval = computed(() => {
   if (!hasValidAmount.value) return false;
@@ -140,18 +141,18 @@ const needsApproval = computed(() => {
 });
 
 const primaryButtonText = computed(() => {
-  if (loadingData.value || checkingAllowance.value) return '状态加载中...';
-  if (approving.value) return '授权中...';
-  if (staking.value) return '参与中...';
-  if (!hasWalletReady.value) return '请先连接钱包';
-  if (!isContractsConfigured.value) return '合约未配置';
-  if (!hasReferrer.value) return '质押前请先绑定推荐人';
+  if (loadingData.value || checkingAllowance.value) return t('staking.btn.loading');
+  if (approving.value) return t('staking.btn.approving');
+  if (staking.value) return t('staking.btn.staking');
+  if (!hasWalletReady.value) return t('staking.btn.connectWallet');
+  if (!isContractsConfigured.value) return t('staking.btn.contractNotConfigured');
+  if (!hasReferrer.value) return t('staking.btn.bindReferrerFirst');
   if (!stakeAmount.value) return amountPlaceholder.value;
-  if (!hasValidAmount.value) return '请输入有效金额';
-  if (parsedStakeAmount.value < minStakeRaw.value) return `${minStakeText.value}U 起步`;
-  if (parsedStakeAmount.value > usdtBalanceRaw.value) return 'USDT 余额不足';
-  if (needsApproval.value) return '授权 USDT';
-  return '参与生态';
+  if (!hasValidAmount.value) return t('staking.btn.enterValidAmount');
+  if (parsedStakeAmount.value < minStakeRaw.value) return t('staking.btn.minStakeLimit', { amount: minStakeText.value });
+  if (parsedStakeAmount.value > usdtBalanceRaw.value) return t('staking.btn.insufficientBalance');
+  if (needsApproval.value) return t('staking.btn.approve');
+  return t('staking.btn.stake');
 });
 
 const actionDisabled = computed(() => {
@@ -313,7 +314,7 @@ async function handleApprove() {
 
   const signer = await getWriteSigner();
   if (!signer) {
-    showToast('请先连接钱包', 'warning');
+    showToast(t('toast.staking.connectWallet'), 'warning');
     return;
   }
 
@@ -321,17 +322,17 @@ async function handleApprove() {
   try {
     const usdt = new ethers.Contract(usdtAddress.value, erc20Abi, signer);
     const tx = await usdt.approve(stakingAddress.value, ethers.MaxUint256);
-    showToast('授权交易已提交', 'success');
+    showToast(t('toast.staking.approveSubmitted'), 'success');
     await tx.wait();
     await refreshAllowance();
-    showToast('USDT 授权成功', 'success');
+    showToast(t('toast.staking.approveSuccess'), 'success');
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
-      showToast('已取消授权', 'warning');
+      showToast(t('toast.staking.approveCancelled'), 'warning');
     } else if (error?.reason) {
       showToast(error.reason, 'error');
     } else {
-      showToast('授权失败，请稍后重试', 'error');
+      showToast(t('toast.staking.approveFailed'), 'error');
     }
   } finally {
     approving.value = false;
@@ -344,7 +345,7 @@ async function handleStake() {
 
   const signer = await getWriteSigner();
   if (!signer) {
-    showToast('请先连接钱包', 'warning');
+    showToast(t('toast.staking.connectWallet'), 'warning');
     return;
   }
 
@@ -356,28 +357,28 @@ async function handleStake() {
     const allowance = await usdt.allowance(userAddress, stakingAddress.value);
 
     if (allowance < parsedStakeAmount.value) {
-      showToast('授权额度不足，请先授权 USDT', 'warning');
+      showToast(t('toast.staking.insufficientAllowance'), 'warning');
       return;
     }
 
     const tx = await stakeContract.stake(parsedStakeAmount.value, 0n);
-    showToast('质押交易已提交', 'success');
+    showToast(t('toast.staking.stakeSubmitted'), 'success');
     await tx.wait();
-    showToast('参与生态成功', 'success');
+    showToast(t('toast.staking.stakeSuccess'), 'success');
     stakeAmount.value = '';
     await refreshCardData();
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
-      showToast('已取消质押', 'warning');
+      showToast(t('toast.staking.stakeCancelled'), 'warning');
     } else if (
       String(error?.reason || '').toLowerCase().includes('maxstakeamount')
       || String(error?.message || '').toLowerCase().includes('maxstakeamount')
     ) {
-      showToast('已达到当前时段限额，请稍后再试', 'warning');
+      showToast(t('toast.staking.maxStakeLimit'), 'warning');
     } else if (error?.reason) {
       showToast(error.reason, 'error');
     } else {
-      showToast('质押失败，请稍后重试', 'error');
+      showToast(t('toast.staking.stakeFailed'), 'error');
     }
   } finally {
     staking.value = false;
@@ -386,31 +387,31 @@ async function handleStake() {
 
 async function handlePrimaryAction() {
   if (!hasWalletReady.value) {
-    showToast('请先连接钱包', 'warning');
+    showToast(t('toast.staking.connectWallet'), 'warning');
     return;
   }
   if (!isContractsConfigured.value) {
-    showToast('合约地址未完整配置', 'error');
+    showToast(t('toast.staking.contractNotConfigured'), 'error');
     return;
   }
   if (!hasReferrer.value) {
-    showToast('质押前请先绑定推荐人', 'warning');
+    showToast(t('toast.staking.bindReferrerFirst'), 'warning');
     return;
   }
   if (!hasValidAmount.value) {
-    showToast('请输入有效金额', 'warning');
+    showToast(t('toast.staking.enterValidAmount'), 'warning');
     return;
   }
   if (parsedStakeAmount.value < minStakeRaw.value) {
-    showToast(`最低参与门槛为 ${minStakeText.value}U`, 'warning');
+    showToast(t('toast.staking.minStakeLimit', { amount: minStakeText.value }), 'warning');
     return;
   }
   if (maxStakeRaw.value > 0n && parsedStakeAmount.value > maxStakeRaw.value) {
-    showToast('已达到当前时段限额，请稍后再试', 'warning');
+    showToast(t('toast.staking.maxStakeLimit'), 'warning');
     return;
   }
   if (parsedStakeAmount.value > usdtBalanceRaw.value) {
-    showToast('USDT 余额不足', 'warning');
+    showToast(t('toast.staking.insufficientBalance'), 'warning');
     return;
   }
 

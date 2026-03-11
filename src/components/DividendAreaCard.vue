@@ -1,15 +1,15 @@
 <template>
   <section class="dividend-card" :class="{ 'is-visible': isVisible }">
-    <h2 class="card-title">联创分红</h2>
-    <p class="card-desc">满足三星及以上的用户可享受分红池收益。</p>
+    <h2 class="card-title">{{ t('dividend.title') }}</h2>
+    <p class="card-desc">{{ t('dividend.desc') }}</p>
 
     <div class="info-wrap">
       <div class="info-item">
-        <span class="info-label">待领取收益 (USDT)</span>
+        <span class="info-label">{{ t('dividend.pendingRewards') }}</span>
         <span class="info-value highlight">{{ pendingRewardsText }}</span>
       </div>
       <div class="info-item">
-        <span class="info-label">历史总收益 (USDT)</span>
+        <span class="info-label">{{ t('dividend.totalRewards') }}</span>
         <span class="info-value">{{ totalRewardsText }}</span>
       </div>
     </div>
@@ -28,6 +28,7 @@ import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
+import { t } from '@/i18n/index.js';
 import nodeDividendPoolAbi from '@/abis/nodeDividendPool.json';
 import erc20Abi from '@/abis/erc20.json';
 import stakingAbi from '@/abis/staking.json';
@@ -60,12 +61,12 @@ const totalRewardsText = computed(() => formatAmount(totalRewardsRaw.value, usdt
 const hasPendingRewards = computed(() => pendingRewardsRaw.value > 0n);
 
 const primaryButtonText = computed(() => {
-  if (loadingData.value) return '数据加载中...';
-  if (harvesting.value) return '领取中...';
-  if (!hasWalletReady.value) return '请先连接钱包';
-  if (!isContractsConfigured.value) return '合约未配置';
-  if (!hasPendingRewards.value) return '暂无待领取收益';
-  return '领取分红';
+  if (loadingData.value) return t('dividend.btn.loading');
+  if (harvesting.value) return t('dividend.btn.harvesting');
+  if (!hasWalletReady.value) return t('dividend.btn.connectWallet');
+  if (!isContractsConfigured.value) return t('dividend.btn.contractNotConfigured');
+  if (!hasPendingRewards.value) return t('dividend.btn.noPendingRewards');
+  return t('dividend.btn.harvest');
 });
 
 const actionDisabled = computed(() => {
@@ -134,7 +135,7 @@ async function handleHarvest() {
 
   const signer = await getWriteSigner();
   if (!signer) {
-    showToast('请先连接钱包', 'warning');
+    showToast(t('toast.dividend.connectWallet'), 'warning');
     return;
   }
 
@@ -148,7 +149,7 @@ async function handleHarvest() {
       const stakingContract = new ethers.Contract(stakingAddress.value, stakingAbi, provider);
       const isPreacher = await stakingContract.isPreacher(userAddress);
       if (!isPreacher) {
-        showToast('您暂非有效账户，无法领取分红', 'warning');
+        showToast(t('toast.dividend.notEligible'), 'warning');
         harvesting.value = false;
         return;
       }
@@ -157,18 +158,18 @@ async function handleHarvest() {
     const dividendPool = new ethers.Contract(dividendPoolAddress.value, nodeDividendPoolAbi, signer);
     
     const tx = await dividendPool.harvest(usdtAddress.value);
-    showToast('领取交易已提交', 'success');
+    showToast(t('toast.dividend.harvestSubmitted'), 'success');
     await tx.wait();
-    showToast('分红领取成功', 'success');
+    showToast(t('toast.dividend.harvestSuccess'), 'success');
     
     await refreshCardData();
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
-      showToast('已取消领取', 'warning');
+      showToast(t('toast.dividend.harvestCancelled'), 'warning');
     } else if (error?.reason) {
       showToast(error.reason, 'error');
     } else {
-      showToast('领取失败，请稍后重试', 'error');
+      showToast(t('toast.dividend.harvestFailed'), 'error');
     }
   } finally {
     harvesting.value = false;
