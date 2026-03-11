@@ -545,13 +545,44 @@ const executeBindReferral = async () => {
 
 const copyText = (text) => {
   if (!isBound.value || !text) return;
+
+  // Fallback method for older browsers or when clipboard API is not available
+  const fallbackCopy = (textToCopy) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      // Prevent scrolling to bottom
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.position = 'fixed';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        showToast(t('toast.bind.copySuccess'), 'success');
+      } else {
+        throw new Error('Fallback copy failed');
+      }
+    } catch (err) {
+      showToast(t('toast.bind.copyFailed'), 'error');
+    }
+  };
+
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text)
       .then(() => showToast(t('toast.bind.copySuccess'), 'success'))
-      .catch(() => showToast(t('toast.bind.copyFailed'), 'error'));
-    return;
+      .catch(() => {
+        // If clipboard API fails (e.g., due to permissions), try fallback
+        fallbackCopy(text);
+      });
+  } else {
+    // If clipboard API is not available, use fallback
+    fallbackCopy(text);
   }
-  showToast(t('toast.bind.copyFailed'), 'error');
 };
 
 const resetFriendsData = () => {

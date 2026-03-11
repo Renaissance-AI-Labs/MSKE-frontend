@@ -18,7 +18,7 @@
 
         <div class="stats-card-vertical">
           <div class="stat-item">
-            <p class="stat-label">待领收益</p>
+            <p class="stat-label">总待领收益</p>
             <p class="stat-value">{{ totalPendingRewardUsdtText }} U <span class="sub-value">(≈ {{ totalPendingRewardMskeText }} MSKE)</span></p>
           </div>
           <div class="stat-item">
@@ -81,7 +81,7 @@
 
             <div class="order-actions" v-if="activeStatus === 0">
               <button class="action-btn" :disabled="actionLoading" @click="handleHarvest(record)">
-                领取收益
+                {{ actionLoading && pendingHarvestRecord === record.key ? actionStatusText : '领取收益' }}
               </button>
               <button class="action-btn danger" :disabled="actionLoading" @click="openUnstakeConfirm(record)">
                 赎回
@@ -111,11 +111,13 @@
         <div class="modal-container">
           <h3 class="modal-title">赎回确认</h3>
           <p class="modal-desc">
-            根据您当前持有天数，当前赎回比例为 {{ unstakeConfirmRateText }}，剩余本金将回流底池。赎回后将不再享受该笔订单分红。
+            根据您当前持有天数，当前赎回比例为 <span class="highlight-rate">{{ unstakeConfirmRateText }}</span>，剩余本金将回流底池。赎回后将<span class="highlight-warn">不再享受该笔订单分红、不可领取收益</span>。
           </p>
           <div class="modal-actions">
-            <button class="modal-btn" @click="closeUnstakeConfirm">取消</button>
-            <button class="modal-btn primary" :disabled="actionLoading" @click="confirmUnstake">确认赎回</button>
+            <button class="modal-btn" @click="closeUnstakeConfirm" :disabled="actionLoading">取消</button>
+            <button class="modal-btn primary" :disabled="actionLoading" @click="confirmUnstake">
+              {{ actionLoading ? actionStatusText : '确认赎回' }}
+            </button>
           </div>
         </div>
       </div>
@@ -153,6 +155,8 @@ const totalRecords = ref(0);
 const currentPage = ref(1);
 const loadingRecords = ref(false);
 const actionLoading = ref(false);
+const actionStatusText = ref('');
+const pendingHarvestRecord = ref(null);
 const nowTs = ref(Math.floor(Date.now() / 1000));
 const unstakeConfirmVisible = ref(false);
 const pendingUnstakeRecord = ref(null);
@@ -171,8 +175,8 @@ const routerAddress = computed(() => getContractAddress('Router'));
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
 
-const totalPendingRewardUsdtText = computed(() => formatAmount(totalPendingRewardUsdtRaw.value, stakingDecimals.value, 4));
-const totalPendingRewardMskeText = computed(() => formatAmount(totalPendingRewardMskeRaw.value, stakingDecimals.value, 6));
+const totalPendingRewardUsdtText = computed(() => formatAmount(totalPendingRewardUsdtRaw.value, stakingDecimals.value, 2));
+const totalPendingRewardMskeText = computed(() => formatAmount(totalPendingRewardMskeRaw.value, stakingDecimals.value, 2));
 const totalPages = computed(() => Math.ceil(totalRecords.value / PAGE_LIMIT) || 1);
 const unstakeConfirmRateText = computed(() => {
   if (!pendingUnstakeRecord.value) return '--';
@@ -202,14 +206,25 @@ async function getWriteStakingContract() {
   return new ethers.Contract(stakingAddress.value, stakingAbi, signer);
 }
 
-function formatAmount(value, decimals = 18, precision = 4) {
-  const text = ethers.formatUnits(value, decimals);
-  const numeric = Number(text);
-  if (!Number.isFinite(numeric)) return '0';
-  return numeric.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: precision
-  });
+function formatAmount(value, decimals = 18, precision = 2) {
+  let text = '0';
+  try {
+    text = ethers.formatUnits(value || 0n, decimals);
+  } catch (e) {
+    text = '0';
+  }
+  const parts = text.split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts.length > 1 ? parts[1].slice(0, precision) : '';
+  
+  const formattedInteger = Number(integerPart).toLocaleString('en-US');
+  
+  if (precision > 0) {
+    const paddedDecimal = decimalPart.padEnd(precision, '0');
+    return `${formattedInteger}.${paddedDecimal}`;
+  }
+  
+  return formattedInteger;
 }
 
 function getHeldDays(stakeTime) {
@@ -381,11 +396,11 @@ async function fetchRecords({ reset = false } = {}) {
         try {
           const rewardUsdtRaw = await contract.rewardOfSlot(walletState.address, item.recordIndex);
           const rewardMskeRaw = await getMskeAmountOut(rewardUsdtRaw, provider);
-          item.pendingRewardUsdtText = formatAmount(rewardUsdtRaw, stakingDecimals.value, 4);
-          item.pendingRewardMskeText = formatAmount(rewardMskeRaw, stakingDecimals.value, 6);
+          item.pendingRewardUsdtText = formatAmount(rewardUsdtRaw, stakingDecimals.value, 2);
+          item.pendingRewardMskeText = formatAmount(rewardMskeRaw, stakingDecimals.value, 2);
         } catch (e) {
-          item.pendingRewardUsdtText = '0';
-          item.pendingRewardMskeText = '0';
+          item.pendingRewardUsdtText = '0.00';
+          item.pendingRewardMskeText = '0.00';
         }
       }));
     }
@@ -410,6 +425,11 @@ async function refreshAll() {
 function switchStatus(status) {
   if (activeStatus.value === status) return;
   activeStatus.value = status;
+  // Clear data immediately before fetching
+  recordList.value = [];
+  allRecordsList.value = [];
+  totalRecords.value = 0;
+  currentPage.value = 1;
   refreshAll();
 }
 
@@ -434,10 +454,13 @@ async function handleHarvest(record) {
   }
 
   actionLoading.value = true;
+  pendingHarvestRecord.value = record.key;
+  actionStatusText.value = '等待签名...';
   try {
     const contract = await getWriteStakingContract();
     if (!contract) throw new Error('NO_CONTRACT');
     const tx = await contract.harvest([record.recordIndex]);
+    actionStatusText.value = '领取中...';
     showToast('领取交易已提交', 'success');
     await tx.wait();
     showToast('领取成功', 'success');
@@ -452,6 +475,8 @@ async function handleHarvest(record) {
     }
   } finally {
     actionLoading.value = false;
+    pendingHarvestRecord.value = null;
+    actionStatusText.value = '';
   }
 }
 
@@ -468,10 +493,12 @@ function closeUnstakeConfirm() {
 async function confirmUnstake() {
   if (!pendingUnstakeRecord.value) return;
   actionLoading.value = true;
+  actionStatusText.value = '等待签名...';
   try {
     const contract = await getWriteStakingContract();
     if (!contract) throw new Error('NO_CONTRACT');
     const tx = await contract.unstake([pendingUnstakeRecord.value.recordIndex]);
+    actionStatusText.value = '赎回中...';
     showToast('赎回交易已提交', 'success');
     await tx.wait();
     showToast('赎回成功', 'success');
@@ -487,6 +514,7 @@ async function confirmUnstake() {
     }
   } finally {
     actionLoading.value = false;
+    actionStatusText.value = '';
   }
 }
 
@@ -960,49 +988,78 @@ onBeforeUnmount(() => {
 
 .modal-container {
   width: 100%;
-  max-width: 420px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 69, 0, 0.25);
-  background: linear-gradient(180deg, rgba(20, 10, 5, 0.96), rgba(9, 6, 5, 0.96));
-  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.55);
+  max-width: 360px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 109, 60, 0.25);
+  background: linear-gradient(180deg, rgba(25, 14, 8, 0.98), rgba(14, 9, 7, 0.98));
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(12px);
   color: #fff;
-  padding: 14px;
+  padding: 20px;
 }
 
 .modal-title {
   margin: 0;
-  font-size: 1rem;
-  color: #ffd2a4;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #ffe4cc;
 }
 
 .modal-desc {
   margin: 10px 0 0;
   color: #d7c0b0;
   font-size: 0.86rem;
-  line-height: 1.45;
+  line-height: 1.5;
+}
+
+.highlight-rate {
+  color: #ffc2a0;
+  font-weight: 600;
+}
+
+.highlight-warn {
+  color: #ff4500;
+  font-weight: 600;
 }
 
 .modal-actions {
-  margin-top: 14px;
+  margin-top: 20px;
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
 }
 
 .modal-btn {
   border: 1px solid rgba(201, 179, 162, 0.45);
   background: rgba(160, 130, 110, 0.1);
   color: #f2dac6;
-  min-height: 34px;
-  padding: 0 12px;
+  min-height: 36px;
+  padding: 0 16px;
   border-radius: 8px;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.modal-btn:hover:not(:disabled) {
+  background: rgba(160, 130, 110, 0.2);
 }
 
 .modal-btn.primary {
   border-color: rgba(255, 130, 60, 0.45);
   background: rgba(255, 92, 31, 0.14);
   color: #ffd0a9;
+  font-weight: 600;
+}
+
+.modal-btn.primary:hover:not(:disabled) {
+  border-color: rgba(255, 130, 60, 0.72);
+  background: rgba(255, 89, 34, 0.28);
+  color: #fff0e4;
 }
 
 .modal-btn:disabled {
