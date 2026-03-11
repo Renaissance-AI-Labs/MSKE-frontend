@@ -31,6 +31,7 @@ import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import nodeDividendPoolAbi from '@/abis/nodeDividendPool.json';
 import erc20Abi from '@/abis/erc20.json';
+import stakingAbi from '@/abis/staking.json';
 
 const DEFAULT_DECIMALS = 18;
 const pendingRewardsRaw = ref(0n);
@@ -41,10 +42,12 @@ const harvesting = ref(false);
 
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const dividendPoolAddress = computed(() => getContractAddress('NodeDividendPool'));
+const stakingAddress = computed(() => getContractAddress('Staking'));
 
 const isContractsConfigured = computed(() => {
   return ethers.isAddress(usdtAddress.value || '')
-    && ethers.isAddress(dividendPoolAddress.value || '');
+    && ethers.isAddress(dividendPoolAddress.value || '')
+    && ethers.isAddress(stakingAddress.value || '');
 });
 
 const hasWalletReady = computed(() => {
@@ -137,6 +140,20 @@ async function handleHarvest() {
 
   harvesting.value = true;
   try {
+    const userAddress = walletState.address;
+    
+    // Check if user is a valid preacher
+    const provider = getReadProvider();
+    if (provider) {
+      const stakingContract = new ethers.Contract(stakingAddress.value, stakingAbi, provider);
+      const isPreacher = await stakingContract.isPreacher(userAddress);
+      if (!isPreacher) {
+        showToast('您暂非有效账户，无法领取分红', 'warning');
+        harvesting.value = false;
+        return;
+      }
+    }
+
     const dividendPool = new ethers.Contract(dividendPoolAddress.value, nodeDividendPoolAbi, signer);
     
     const tx = await dividendPool.harvest(usdtAddress.value);
