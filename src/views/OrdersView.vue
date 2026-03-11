@@ -40,7 +40,10 @@
                   <p class="order-title">{{ t('orders.orderNumber', { index: record.displayIndex }) }}</p>
                   <span class="order-time">{{ record.stakeTimeText }}</span>
                 </div>
-                <p v-if="activeStatus === 0" class="order-days" v-html="t('orders.heldDays', { days: `<span class='highlight-days'>${record.holdDays}</span>` })"></p>
+                <div v-if="activeStatus === 0" class="order-days">
+                  <p v-html="t('orders.effectiveRewardDays', { days: `<span class='highlight-days'>${record.rewardDays}</span>` })"></p>
+                  <p v-html="t('orders.stakeDays', { days: `<span class='highlight-days'>${record.stakeDays}</span>` })"></p>
+                </div>
               </div>
             </div>
 
@@ -405,9 +408,10 @@ function formatStakeTime(timestampRaw) {
 
 function normalizeRecord(record, fallbackIndex) {
   const effectiveRewardStartTime = getEffectiveRewardStartTime(record);
-  const holdDays = getHeldDays(effectiveRewardStartTime);
-  const rewardRateRaw = pickRateByDays(holdDays, rewardThresholds.value, rewardRates.value);
-  const unstakeRateRaw = pickRateByDays(holdDays, unstakeThresholds.value, unstakeRates.value);
+  const rewardDays = getHeldDays(effectiveRewardStartTime);
+  const stakeDays = getHeldDays(record.stakeTime);
+  const rewardRateRaw = pickRateByDays(rewardDays, rewardThresholds.value, rewardRates.value);
+  const unstakeRateRaw = pickRateByDays(stakeDays, unstakeThresholds.value, unstakeRates.value);
   const rawId = typeof record.id !== 'undefined' ? BigInt(record.id) : BigInt(fallbackIndex);
   const recordIndex = Number(rawId);
 
@@ -415,7 +419,8 @@ function normalizeRecord(record, fallbackIndex) {
     key: `${recordIndex}-${record.stakeTime}-${record.amount}`,
     recordIndex,
     displayIndex: recordIndex + 1,
-    holdDays,
+    rewardDays,
+    stakeDays,
     amountText: formatAmount(BigInt(record.amount || 0n), stakingDecimals.value),
     dailyRewardRateText: formatRatePercent(rewardRateRaw),
     unstakeRateText: formatRatePercent(unstakeRateRaw, true),
@@ -968,9 +973,15 @@ onBeforeUnmount(() => {
 }
 
 .order-days {
-  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   color: #cbb19d;
   font-size: 0.75rem;
+}
+
+.order-days p {
+  margin: 0;
 }
 
 .highlight-days {

@@ -62,7 +62,7 @@ export default {
 body {
   margin: 0;
   padding: 0;
-  background-color: #0a0a0a; /* Dark black background */
+  background-color: #000000; /* Dark black background */
   color: #ffffff;
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
