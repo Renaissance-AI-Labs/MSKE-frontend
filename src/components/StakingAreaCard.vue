@@ -273,13 +273,22 @@ async function refreshCardData() {
     const stake = new ethers.Contract(stakingAddress.value, stakingAbi, provider);
     const referral = new ethers.Contract(referralAddress.value, referralAbi, provider);
 
-    const [decimalsRaw, balanceRaw, minStakeAmountRaw, maxStakeAmountRaw, referrerAddress] = await Promise.all([
+    const [decimalsRaw, balanceRaw, minStakeAmountRaw, maxStakeAmountRaw, referrerAddress, starLevel] = await Promise.all([
       usdt.decimals(),
       usdt.balanceOf(walletState.address),
       stake.minStakeAmount(),
       stake.maxStakeAmount(),
-      referral.getReferral(walletState.address)
+      referral.getReferral(walletState.address),
+      stake.userStarLevel(walletState.address)
     ]);
+    
+    console.log('[StakingAreaCard] User Data:', {
+      address: walletState.address,
+      maxStakeAmount: ethers.formatUnits(maxStakeAmountRaw, Number(decimalsRaw)),
+      starLevel: Number(starLevel),
+      referrer: referrerAddress,
+      hasReferrer: Boolean(referrerAddress && referrerAddress !== ethers.ZeroAddress)
+    });
 
     usdtDecimals.value = Number(decimalsRaw);
     usdtBalanceRaw.value = balanceRaw;
