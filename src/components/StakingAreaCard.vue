@@ -133,7 +133,8 @@ const parsedStakeAmount = computed(() => {
 
 const usdtBalanceText = computed(() => formatAmount(usdtBalanceRaw.value, usdtDecimals.value));
 const minStakeText = computed(() => formatAmount(minStakeRaw.value, usdtDecimals.value));
-const amountPlaceholder = computed(() => t('staking.minStakePlaceholder', { amount: minStakeText.value }));
+const maxStakeText = computed(() => maxStakeRaw.value > 0n ? formatAmount(maxStakeRaw.value, usdtDecimals.value) : '∞');
+const amountPlaceholder = computed(() => t('staking.stakePlaceholder', { min: minStakeText.value, max: maxStakeText.value }));
 const hasValidAmount = computed(() => Boolean(parsedStakeAmount.value && parsedStakeAmount.value > 0n));
 const needsApproval = computed(() => {
   if (!hasValidAmount.value) return false;
@@ -147,9 +148,8 @@ const primaryButtonText = computed(() => {
   if (!hasWalletReady.value) return t('staking.btn.connectWallet');
   if (!isContractsConfigured.value) return t('staking.btn.contractNotConfigured');
   if (!hasReferrer.value) return t('staking.btn.bindReferrerFirst');
-  if (!stakeAmount.value) return amountPlaceholder.value;
+  if (!stakeAmount.value) return t('staking.btn.stake');
   if (!hasValidAmount.value) return t('staking.btn.enterValidAmount');
-  if (parsedStakeAmount.value < minStakeRaw.value) return t('staking.btn.minStakeLimit', { amount: minStakeText.value });
   if (parsedStakeAmount.value > usdtBalanceRaw.value) return t('staking.btn.insufficientBalance');
   if (needsApproval.value) return t('staking.btn.approve');
   return t('staking.btn.stake');
@@ -361,6 +361,10 @@ async function handleStake() {
       return;
     }
 
+    console.log('[Contract Call] stake() params:', {
+      amount: parsedStakeAmount.value.toString(),
+      amountOutMin: '0'
+    });
     const tx = await stakeContract.stake(parsedStakeAmount.value, 0n);
     showToast(t('toast.staking.stakeSubmitted'), 'success');
     await tx.wait();
