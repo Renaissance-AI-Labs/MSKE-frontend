@@ -136,7 +136,7 @@ const usdtBalanceText = computed(() => formatAmount(usdtBalanceRaw.value, usdtDe
 const minStakeText = computed(() => formatAmount(minStakeRaw.value, usdtDecimals.value));
 const maxStakeText = computed(() => maxStakeRaw.value > 0n ? formatAmount(maxStakeRaw.value, usdtDecimals.value) : '∞');
 const isQuotaExhausted = computed(() => {
-  if (maxStakeRaw.value === 0n) return false;
+  if (maxStakeRaw.value === 0n) return true;
   const threshold = ethers.parseUnits("200", usdtDecimals.value);
   return maxStakeRaw.value <= threshold;
 });
@@ -166,7 +166,7 @@ const primaryButtonText = computed(() => {
 });
 
 const actionDisabled = computed(() => {
-  return approving.value || staking.value || loadingData.value || checkingAllowance.value || !isContractsConfigured.value;
+  return approving.value || staking.value || loadingData.value || checkingAllowance.value || !isContractsConfigured.value || isQuotaExhausted.value;
 });
 
 function sanitizeDecimalInput(value) {

@@ -134,7 +134,7 @@ const languagePacks = {
     'staking.stakeUsdt': 'Stake USDT',
     'staking.balance': 'Balance: {amount}',
     'staking.stakePlaceholder': '{min} ~ {max}',
-    'staking.noQuota': 'No Quota Available',
+    'staking.noQuota': 'No quota available',
     'staking.btn.loading': 'Loading...',
     'staking.btn.approving': 'Approving...',
     'staking.btn.staking': 'Staking...',
