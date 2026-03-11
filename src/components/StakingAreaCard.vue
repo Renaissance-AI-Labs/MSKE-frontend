@@ -54,6 +54,7 @@
           type="text"
           inputmode="decimal"
           :placeholder="amountPlaceholder"
+          :disabled="isNoQuota"
           @input="onAmountInput"
         />
         <div class="input-suffix">USDT</div>
@@ -134,7 +135,14 @@ const parsedStakeAmount = computed(() => {
 const usdtBalanceText = computed(() => formatAmount(usdtBalanceRaw.value, usdtDecimals.value));
 const minStakeText = computed(() => formatAmount(minStakeRaw.value, usdtDecimals.value));
 const maxStakeText = computed(() => maxStakeRaw.value > 0n ? formatAmount(maxStakeRaw.value, usdtDecimals.value) : '∞');
-const amountPlaceholder = computed(() => t('staking.stakePlaceholder', { min: minStakeText.value, max: maxStakeText.value }));
+const isNoQuota = computed(() => {
+  const threshold = ethers.parseUnits('200', usdtDecimals.value);
+  return maxStakeRaw.value > 0n && maxStakeRaw.value <= threshold;
+});
+const amountPlaceholder = computed(() => {
+  if (isNoQuota.value) return t('staking.stakePlaceholderNoQuota');
+  return t('staking.stakePlaceholder', { min: minStakeText.value, max: maxStakeText.value });
+});
 const hasValidAmount = computed(() => Boolean(parsedStakeAmount.value && parsedStakeAmount.value > 0n));
 const needsApproval = computed(() => {
   if (!hasValidAmount.value) return false;
@@ -148,6 +156,7 @@ const primaryButtonText = computed(() => {
   if (!hasWalletReady.value) return t('staking.btn.connectWallet');
   if (!isContractsConfigured.value) return t('staking.btn.contractNotConfigured');
   if (!hasReferrer.value) return t('staking.btn.bindReferrerFirst');
+  if (isNoQuota.value) return t('staking.btn.noQuota');
   if (!stakeAmount.value) return t('staking.btn.stake');
   if (!hasValidAmount.value) return t('staking.btn.enterValidAmount');
   if (parsedStakeAmount.value > usdtBalanceRaw.value) return t('staking.btn.insufficientBalance');
@@ -402,6 +411,10 @@ async function handlePrimaryAction() {
     showToast(t('toast.staking.bindReferrerFirst'), 'warning');
     return;
   }
+  if (isNoQuota.value) {
+    showToast(t('toast.staking.maxStakeLimit'), 'warning');
+    return;
+  }
   if (!hasValidAmount.value) {
     showToast(t('toast.staking.enterValidAmount'), 'warning');
     return;
@@ -426,6 +439,15 @@ async function handlePrimaryAction() {
 
   await handleStake();
 }
+
+watch(
+  () => isNoQuota.value,
+  (newVal) => {
+    if (newVal) {
+      stakeAmount.value = '';
+    }
+  }
+);
 
 watch(
   () => [walletState.isConnected, walletState.address],
