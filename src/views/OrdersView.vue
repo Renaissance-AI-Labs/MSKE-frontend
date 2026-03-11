@@ -16,7 +16,7 @@
           <button class="tab-btn" :class="{ active: activeStatus === 1 }" @click="switchStatus(1)">{{ t('orders.tab.redeemed') }}</button>
         </div>
 
-        <div class="stats-card-vertical">
+        <div v-if="activeStatus === 0" class="stats-card-vertical">
           <div class="stat-item">
             <p class="stat-label">{{ t('orders.totalPendingReward') }}</p>
             <p class="stat-value">{{ totalPendingRewardUsdtText }} U <span class="sub-value">(≈ {{ totalPendingRewardMskeText }} MSKE)</span></p>
@@ -46,21 +46,12 @@
 
           <div class="order-content-grid">
             <div class="info-block">
-              <div class="order-grid">
+              <div class="order-grid-horizontal">
                 <div class="row">
                   <span class="row-label">{{ t('orders.stakePrincipal') }}</span>
                   <span class="row-value strong">{{ record.amountText }} U</span>
                 </div>
-                <div class="row">
-                  <span class="row-label">{{ t('orders.lpShare') }}</span>
-                  <span class="row-value">{{ record.lpAmountText }}<span class="sub-value"> (≈ {{ record.lpUAmountText }} U)</span></span>
-                </div>
-              </div>
-            </div>
-
-            <div class="info-block compact">
-              <div class="order-grid">
-                <div class="row">
+                <div class="row" v-if="activeStatus === 0">
                   <span class="row-label">{{ t('orders.dailyRewardRate') }}</span>
                   <span class="row-value highlight">{{ record.dailyRewardRateText }}</span>
                 </div>
@@ -282,8 +273,6 @@ function normalizeRecord(record, fallbackIndex) {
     displayIndex: recordIndex + 1,
     holdDays,
     amountText: formatAmount(BigInt(record.amount || 0n), stakingDecimals.value),
-    lpAmountText: formatAmount(BigInt(record.lpAmount || 0n), stakingDecimals.value),
-    lpUAmountText: formatAmount(BigInt(record.lpUAmount || 0n), stakingDecimals.value),
     dailyRewardRateText: formatRatePercent(rewardRateRaw),
     unstakeRateText: formatRatePercent(unstakeRateRaw, true),
     stakeTimeText: formatStakeTime(record.stakeTime),
@@ -624,10 +613,10 @@ onBeforeUnmount(() => {
 .stats-card-vertical {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid rgba(255, 109, 60, 0.15);
   border-radius: 10px;
-  padding: 12px 16px;
+  padding: 4px 14px;
   background: linear-gradient(180deg, rgba(255, 88, 28, 0.04), rgba(255, 69, 0, 0.01));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
@@ -641,7 +630,7 @@ onBeforeUnmount(() => {
 
 .stat-item + .stat-item {
   border-top: 1px dashed rgba(255, 164, 118, 0.15);
-  padding-top: 12px;
+  padding-top: 8px;
 }
 
 .stat-label {
@@ -722,7 +711,7 @@ onBeforeUnmount(() => {
 .order-card {
   border: 1px solid rgba(255, 124, 78, 0.2);
   border-radius: 12px;
-  padding: 10px 12px;
+  padding: 8px 12px;
   background: linear-gradient(180deg, rgba(255, 89, 34, 0.08), rgba(255, 69, 0, 0.02));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
@@ -731,8 +720,8 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
-  padding-bottom: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
   border-bottom: 1px solid rgba(255, 164, 118, 0.15);
 }
 
@@ -797,59 +786,71 @@ onBeforeUnmount(() => {
 }
 
 .order-content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  align-items: start;
+  display: block;
+  margin-top: 4px;
 }
 
 .info-block {
-  padding: 2px 0;
+  padding: 0;
 }
 
-.info-block.full-width {
-  margin-top: 6px;
-  padding-top: 6px;
-  border-top: 1px dashed rgba(255, 164, 118, 0.15);
-}
-
-.info-block + .info-block:not(.full-width) {
-  margin-top: 0;
-  padding-top: 4px;
-  border-top: none;
-  padding-left: 12px;
-}
-
-.order-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2px;
+.order-grid-horizontal {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .row {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  min-height: 28px;
+  min-height: 20px;
   font-size: 0.8rem;
-  gap: 2px;
+  /* gap: 2px; */
+  flex: 1;
 }
 
 .row-horizontal {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
+  min-height: auto;
+  gap: 8px;
 }
 
 .row-label {
   color: #cbb19d;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
 }
 
 .row-value {
   color: #f0d9c7;
   font-size: 0.85rem;
+}
+
+.info-block.full-width {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(255, 164, 118, 0.15);
+}
+
+.info-block.full-width .row-horizontal .row-label {
+  white-space: nowrap;
+}
+
+.info-block.full-width .row-horizontal .row-value {
+  min-width: 0;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.info-block.full-width .row-horizontal {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  align-items: center;
+  column-gap: 8px;
 }
 
 .row-value.strong {
@@ -872,7 +873,7 @@ onBeforeUnmount(() => {
 }
 
 .order-actions {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   gap: 8px;
 }
@@ -881,7 +882,7 @@ onBeforeUnmount(() => {
   flex: 1;
   border: 1px solid rgba(255, 130, 60, 0.45);
   border-radius: 8px;
-  min-height: 30px;
+  min-height: 28px;
   background: rgba(255, 92, 31, 0.14);
   color: #ffd0a9;
   font-size: 0.85rem;

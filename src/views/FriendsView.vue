@@ -149,8 +149,9 @@
             <div class="stats-row-divider"></div>
 
             <div class="stats-row star-counts-row">
+              <div class="star-count-title">{{ t('friends.friendStarLevel') }}</div>
               <div class="star-count-item" v-for="star in 7" :key="star">
-                <span class="star-label">V{{ star }}</span>
+                <span class="star-label">{{ star }}{{ t('friends.star') }}</span>
                 <span class="star-value">{{ myStats.downlineStarCounts[star - 1] }}</span>
               </div>
             </div>
@@ -1108,6 +1109,14 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   padding: 4px 0;
+}
+
+.star-count-title {
+  color: #d7c0b0;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-right: 8px;
+  white-space: nowrap;
 }
 
 .star-count-item {
