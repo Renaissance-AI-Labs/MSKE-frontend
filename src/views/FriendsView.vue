@@ -596,6 +596,9 @@ const loadFriendsData = async () => {
         const directInvestRaw = await stakingContract.directTotalInvestValue(walletState.address);
         myStats.value.directInvest = formatAmount(directInvestRaw, 18, 2);
 
+        const myStakeRaw = await stakingContract.balances(walletState.address);
+        myStats.value.myStake = formatAmount(myStakeRaw, 18, 2);
+
         const starPromises = [];
         for (let i = 1; i <= 7; i++) {
           starPromises.push(stakingContract.getDownlineStarCount(walletState.address, i));
@@ -642,9 +645,13 @@ const loadFriendsData = async () => {
     );
 
     let teamInvestResults = [];
+    let friendStakeResults = [];
     if (stakingContract) {
       teamInvestResults = await Promise.allSettled(
         uniqueChildren.map((address) => stakingContract.teamTotalInvestValue(address))
+      );
+      friendStakeResults = await Promise.allSettled(
+        uniqueChildren.map((address) => stakingContract.balances(address))
       );
     }
 
@@ -654,9 +661,14 @@ const loadFriendsData = async () => {
         teamPerformance = formatAmount(teamInvestResults[index].value, 18, 2);
       }
 
+      let friendStake = PLACEHOLDER;
+      if (friendStakeResults[index] && friendStakeResults[index].status === 'fulfilled') {
+        friendStake = formatAmount(friendStakeResults[index].value, 18, 2);
+      }
+
       return {
         address,
-        friendStake: PLACEHOLDER,
+        friendStake,
         teamCount: teamCountResults[index].status === 'fulfilled' ? teamCountResults[index].value.toString() : PLACEHOLDER,
         teamPerformance
       };

@@ -225,7 +225,7 @@ async function fetchDashboardData() {
     totalBurned.value = formatAmount(burnedRaw, Number(mskeDecimals), 2);
 
     const [pctScaled, position] = changeData;
-    if (position === 0n) {
+    if (position === 0n || position === 0) {
       dumpTaxRate.value = '0%';
     } else {
       let effectivePercent = pctScaled < 100n ? 100n : pctScaled;
@@ -486,6 +486,7 @@ onMounted(async () => {
 
 .card-header {
   margin-bottom: 16px;
+  text-align: center;
 }
 
 .card-title {
@@ -525,14 +526,17 @@ onMounted(async () => {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed rgba(255, 255, 255, 0.06);
-  justify-content: flex-start;
-  gap: 24px;
+  justify-content: space-between;
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
   gap: 2px;
+}
+
+.stat-row.secondary-row .stat-item:last-child {
+  align-items: flex-end;
 }
 
 .stat-divider {

@@ -225,6 +225,7 @@ onMounted(async () => {
   margin: 0;
   font-size: 1rem;
   color: #bfa897;
+  text-align: center;
 }
 
 .card-desc {
@@ -232,6 +233,7 @@ onMounted(async () => {
   color: #8f7c70;
   font-size: 0.8rem;
   line-height: 1.4;
+  text-align: center;
 }
 
 .info-wrap {
