@@ -30,6 +30,11 @@
           <span class="stat-label">全网总质押</span>
           <span class="stat-value">{{ totalStaking }}<span class="unit">U</span></span>
         </div>
+        <div class="stat-divider hidden"></div>
+        <div class="stat-item hidden-item">
+          <!-- Placeholder to maintain grid alignment -->
+        </div>
+        <div class="stat-divider hidden"></div>
         <div class="stat-item">
           <span class="stat-label">总销毁数量</span>
           <span class="stat-value">{{ totalBurned }}<span class="unit">MSKE</span></span>
@@ -526,23 +531,29 @@ onMounted(async () => {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px dashed rgba(255, 255, 255, 0.06);
-  justify-content: space-between;
 }
 
 .stat-item {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 2px;
+  flex: 1;
 }
 
-.stat-row.secondary-row .stat-item:last-child {
-  align-items: flex-end;
+.stat-item.hidden-item {
+  visibility: hidden;
 }
 
 .stat-divider {
   width: 1px;
   height: 24px;
   background: rgba(255, 255, 255, 0.08);
+}
+
+.stat-divider.hidden {
+  visibility: hidden;
 }
 
 .stat-label {
