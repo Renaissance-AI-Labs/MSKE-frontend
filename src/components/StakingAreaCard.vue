@@ -182,10 +182,22 @@ function onAmountInput(event) {
   stakeAmount.value = sanitizeDecimalInput(event.target.value);
 }
 
-function formatAmount(amountRaw, decimals, precision = 4) {
+function formatAmount(amountRaw, decimals, precision = 4, exact = false) {
   const formatted = ethers.formatUnits(amountRaw, decimals);
   const num = Number(formatted);
   if (!Number.isFinite(num)) return '0';
+  
+  if (exact) {
+    // Keep exact precision without rounding up/down
+    const str = formatted.toString();
+    const parts = str.split('.');
+    if (parts.length === 1) {
+      return parts[0] + '.' + '0'.repeat(precision);
+    }
+    const decimalPart = parts[1].padEnd(precision, '0').slice(0, precision);
+    return `${parts[0]}.${decimalPart}`;
+  }
+  
   return num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: precision
@@ -235,10 +247,10 @@ async function fetchDashboardData() {
       mskeContract.decimals().catch(() => 18n)
     ]);
 
-    tokenPrice.value = formatAmount(priceRaw, 18, 6);
-    reserveU.value = formatAmount(reserveURaw, 18, 2);
-    totalStaking.value = formatAmount(totalStakingRaw, 18, 2);
-    totalBurned.value = formatAmount(burnedRaw, Number(mskeDecimals), 2);
+    tokenPrice.value = formatAmount(priceRaw, 18, 6, true);
+    reserveU.value = formatAmount(reserveURaw, 18, 2, true);
+    totalStaking.value = formatAmount(totalStakingRaw, 18, 2, true);
+    totalBurned.value = formatAmount(burnedRaw, Number(mskeDecimals), 2, true);
 
     const [pctScaled, position] = changeData;
     if (position === 0n || position === 0) {
@@ -641,6 +653,7 @@ onMounted(async () => {
 .amount-input {
   width: 100%;
   height: 48px;
+  line-height: 48px;
   border-radius: 12px;
   border: 1px solid rgba(255, 114, 67, 0.25);
   background: rgba(0, 0, 0, 0.4);
