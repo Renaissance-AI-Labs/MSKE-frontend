@@ -364,6 +364,12 @@ function getHeldDays(stakeTime) {
   return days;
 }
 
+function getEffectiveRewardStartTime(record) {
+  const stakeTime = BigInt(record?.stakeTime || 0n);
+  const rewardStartTime = BigInt(record?.rewardStartTime || 0n);
+  return rewardStartTime === 0n ? stakeTime : rewardStartTime;
+}
+
 function pickRateByDays(days, thresholds, rates) {
   if (!thresholds.length || !rates.length) return 0n;
   let picked = rates[0] || 0n;
@@ -398,7 +404,8 @@ function formatStakeTime(timestampRaw) {
 }
 
 function normalizeRecord(record, fallbackIndex) {
-  const holdDays = getHeldDays(record.stakeTime);
+  const effectiveRewardStartTime = getEffectiveRewardStartTime(record);
+  const holdDays = getHeldDays(effectiveRewardStartTime);
   const rewardRateRaw = pickRateByDays(holdDays, rewardThresholds.value, rewardRates.value);
   const unstakeRateRaw = pickRateByDays(holdDays, unstakeThresholds.value, unstakeRates.value);
   const rawId = typeof record.id !== 'undefined' ? BigInt(record.id) : BigInt(fallbackIndex);
@@ -745,8 +752,8 @@ onBeforeUnmount(() => {
 
 <style scoped>
 .page-shell {
-  min-height: 100vh;
-  padding: 10px 0px 120px;
+  /* min-height: 100vh; */
+  padding: 10px 0px;
   position: relative;
   background-color: #050302;
   overflow-x: hidden;
