@@ -461,6 +461,9 @@ async function handleHarvest(record) {
   try {
     const contract = await getWriteStakingContract();
     if (!contract) throw new Error('NO_CONTRACT');
+    console.log('[Contract Call] harvest() params:', {
+      indices: [record.recordIndex]
+    });
     const tx = await contract.harvest([record.recordIndex]);
     actionStatusText.value = t('orders.status.harvesting');
     showToast(t('toast.orders.harvestSubmitted'), 'success');
@@ -499,6 +502,9 @@ async function confirmUnstake() {
   try {
     const contract = await getWriteStakingContract();
     if (!contract) throw new Error('NO_CONTRACT');
+    console.log('[Contract Call] unstake() params:', {
+      indices: [pendingUnstakeRecord.value.recordIndex]
+    });
     const tx = await contract.unstake([pendingUnstakeRecord.value.recordIndex]);
     actionStatusText.value = t('orders.status.unstaking');
     showToast(t('toast.orders.unstakeSubmitted'), 'success');

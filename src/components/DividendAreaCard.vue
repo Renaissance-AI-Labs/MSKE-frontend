@@ -8,10 +8,6 @@
         <span class="info-label">{{ t('dividend.pendingRewards') }}</span>
         <span class="info-value highlight">{{ pendingRewardsText }}</span>
       </div>
-      <div class="info-item">
-        <span class="info-label">{{ t('dividend.totalRewards') }}</span>
-        <span class="info-value">{{ totalRewardsText }}</span>
-      </div>
     </div>
 
     <div class="actions">
@@ -35,7 +31,6 @@ import stakingAbi from '@/abis/staking.json';
 
 const DEFAULT_DECIMALS = 18;
 const pendingRewardsRaw = ref(0n);
-const totalRewardsRaw = ref(0n);
 const usdtDecimals = ref(DEFAULT_DECIMALS);
 const loadingData = ref(false);
 const harvesting = ref(false);
@@ -56,7 +51,6 @@ const hasWalletReady = computed(() => {
 });
 
 const pendingRewardsText = computed(() => formatAmount(pendingRewardsRaw.value, usdtDecimals.value));
-const totalRewardsText = computed(() => formatAmount(totalRewardsRaw.value, usdtDecimals.value));
 
 const hasPendingRewards = computed(() => pendingRewardsRaw.value > 0n);
 
@@ -99,7 +93,6 @@ async function getWriteSigner() {
 async function refreshCardData() {
   if (!hasWalletReady.value || !isContractsConfigured.value) {
     pendingRewardsRaw.value = 0n;
-    totalRewardsRaw.value = 0n;
     return;
   }
 
@@ -112,19 +105,16 @@ async function refreshCardData() {
     const dividendPool = new ethers.Contract(dividendPoolAddress.value, nodeDividendPoolAbi, provider);
     const userAddress = walletState.address;
 
-    const [decimalsRaw, pendingRaw, totalRaw] = await Promise.all([
+    const [decimalsRaw, pendingRaw] = await Promise.all([
       usdt.decimals().catch(() => DEFAULT_DECIMALS),
-      dividendPool.getTokenRewards(userAddress, usdtAddress.value),
-      dividendPool.getTokenTotalRewards(userAddress, usdtAddress.value)
+      dividendPool.getTokenRewards(userAddress, usdtAddress.value)
     ]);
 
     usdtDecimals.value = Number(decimalsRaw);
     pendingRewardsRaw.value = pendingRaw;
-    totalRewardsRaw.value = totalRaw;
   } catch (error) {
     console.error('Failed to fetch dividend data:', error);
     pendingRewardsRaw.value = 0n;
-    totalRewardsRaw.value = 0n;
   } finally {
     loadingData.value = false;
   }
@@ -157,6 +147,9 @@ async function handleHarvest() {
 
     const dividendPool = new ethers.Contract(dividendPoolAddress.value, nodeDividendPoolAbi, signer);
     
+    console.log('[Contract Call] dividendPool.harvest() params:', {
+      token: usdtAddress.value
+    });
     const tx = await dividendPool.harvest(usdtAddress.value);
     showToast(t('toast.dividend.harvestSubmitted'), 'success');
     await tx.wait();
