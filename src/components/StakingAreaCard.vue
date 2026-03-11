@@ -236,7 +236,8 @@ async function fetchDashboardData() {
       taxRatioRaw,
       burnedRaw,
       totalStakingRaw,
-      mskeDecimals
+      mskeDecimals,
+      maxStakeAmountRaw
     ] = await Promise.all([
       mskeContract.getTokenPriceUsdt().catch(() => 0n),
       mskeContract.getReserveU().catch(() => 0n),
@@ -244,13 +245,16 @@ async function fetchDashboardData() {
       mskeContract.dumpTaxRatio().catch(() => 5n),
       mskeContract.balanceOf(DEAD_ADDRESS).catch(() => 0n),
       stakingContract.totalSupply().catch(() => 0n),
-      mskeContract.decimals().catch(() => 18n)
+      mskeContract.decimals().catch(() => 18n),
+      stakingContract.maxStakeAmount().catch(() => 0n)
     ]);
 
     tokenPrice.value = formatAmount(priceRaw, 18, 6, true);
     reserveU.value = formatAmount(reserveURaw, 18, 2, true);
     totalStaking.value = formatAmount(totalStakingRaw, 18, 2, true);
     totalBurned.value = formatAmount(burnedRaw, Number(mskeDecimals), 2, true);
+
+    console.log('[StakingAreaCard] Current Max Stake Amount:', formatAmount(maxStakeAmountRaw, 18, 2, true));
 
     const [pctScaled, position] = changeData;
     if (position === 0n || position === 0) {
