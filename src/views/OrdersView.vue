@@ -126,6 +126,8 @@ import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
 
 const PAGE_LIMIT = 2;
 const FALLBACK_BASE_PERCENT = 10000n;
+const REWARD_POLL_INTERVAL = 6000;
+const VALUE_ANIMATION_DURATION = 1800;
 
 // In testnet, 60s = 1 day. In mainnet, 86400s = 1 day.
 // We determine this by checking the chainId.
@@ -139,6 +141,8 @@ const oneDaySeconds = computed(() => isTestnet.value ? 60 : 86400);
 const activeStatus = ref(0);
 const totalPendingRewardUsdtRaw = ref(0n);
 const totalPendingRewardMskeRaw = ref(0n);
+const totalPendingRewardUsdtDisplay = ref(0);
+const totalPendingRewardMskeDisplay = ref(0);
 const recordList = ref([]);
 const allRecordsList = ref([]);
 const totalRecords = ref(0);
@@ -159,14 +163,21 @@ const basePercent = ref(FALLBACK_BASE_PERCENT);
 const stakingDecimals = ref(18);
 
 let nowTimer = null;
+let rewardTimer = null;
+let totalUsdtAnimationFrame = null;
+let totalMskeAnimationFrame = null;
+let pendingRewardRefreshing = false;
+
+const recordDisplayValueMap = new Map();
+const recordAnimationFrameMap = new Map();
 
 const stakingAddress = computed(() => getContractAddress('Staking'));
 const routerAddress = computed(() => getContractAddress('Router'));
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
 
-const totalPendingRewardUsdtText = computed(() => formatAmount(totalPendingRewardUsdtRaw.value, stakingDecimals.value, 2));
-const totalPendingRewardMskeText = computed(() => formatAmount(totalPendingRewardMskeRaw.value, stakingDecimals.value, 2));
+const totalPendingRewardUsdtText = computed(() => formatAnimatedAmount(totalPendingRewardUsdtDisplay.value, 2));
+const totalPendingRewardMskeText = computed(() => formatAnimatedAmount(totalPendingRewardMskeDisplay.value, 2));
 const totalPages = computed(() => Math.ceil(totalRecords.value / PAGE_LIMIT) || 1);
 const unstakeConfirmRateText = computed(() => {
   if (!pendingUnstakeRecord.value) return '--';
@@ -215,6 +226,128 @@ function formatAmount(value, decimals = 18, precision = 2) {
   }
   
   return formattedInteger;
+}
+
+function formatAnimatedAmount(value, precision = 2) {
+  const safe = Number.isFinite(value) ? Math.max(0, value) : 0;
+  return safe.toLocaleString('en-US', {
+    minimumFractionDigits: precision,
+    maximumFractionDigits: precision
+  });
+}
+
+function rawToDisplayNumber(rawValue, decimals = 18) {
+  try {
+    return Number(ethers.formatUnits(rawValue || 0n, decimals));
+  } catch (e) {
+    return 0;
+  }
+}
+
+function easeInOutCubic(progress) {
+  if (progress < 0.5) {
+    return 4 * progress ** 3;
+  }
+  return 1 - ((-2 * progress + 2) ** 3) / 2;
+}
+
+function runValueAnimation({ from, to, onUpdate, duration = VALUE_ANIMATION_DURATION }) {
+  const safeFrom = Number.isFinite(from) ? from : 0;
+  const safeTo = Number.isFinite(to) ? to : 0;
+  if (Math.abs(safeFrom - safeTo) < 1e-8) {
+    onUpdate(safeTo);
+    return null;
+  }
+
+  const start = performance.now();
+  let frameId = null;
+  const tick = (now) => {
+    const progress = Math.min((now - start) / duration, 1);
+    const eased = easeInOutCubic(progress);
+    onUpdate(safeFrom + (safeTo - safeFrom) * eased);
+    if (progress < 1) {
+      frameId = requestAnimationFrame(tick);
+    }
+  };
+  frameId = requestAnimationFrame(tick);
+  return frameId;
+}
+
+function stopAnimation(frameId) {
+  if (frameId) {
+    cancelAnimationFrame(frameId);
+  }
+}
+
+function animateTotalPendingReward(usdtRaw, mskeRaw) {
+  const nextUsdt = rawToDisplayNumber(usdtRaw, stakingDecimals.value);
+  const nextMske = rawToDisplayNumber(mskeRaw, stakingDecimals.value);
+  const fromUsdt = totalPendingRewardUsdtDisplay.value;
+  const fromMske = totalPendingRewardMskeDisplay.value;
+
+  stopAnimation(totalUsdtAnimationFrame);
+  stopAnimation(totalMskeAnimationFrame);
+
+  totalUsdtAnimationFrame = runValueAnimation({
+    from: fromUsdt,
+    to: nextUsdt,
+    onUpdate: (value) => {
+      totalPendingRewardUsdtDisplay.value = value;
+    }
+  });
+
+  totalMskeAnimationFrame = runValueAnimation({
+    from: fromMske,
+    to: nextMske,
+    onUpdate: (value) => {
+      totalPendingRewardMskeDisplay.value = value;
+    }
+  });
+}
+
+function animateRecordPendingReward(item, rewardUsdtRaw, rewardMskeRaw) {
+  const key = item.key;
+  const nextUsdt = rawToDisplayNumber(rewardUsdtRaw, stakingDecimals.value);
+  const nextMske = rawToDisplayNumber(rewardMskeRaw, stakingDecimals.value);
+  const cached = recordDisplayValueMap.get(key) || { usdt: 0, mske: 0 };
+  const frames = recordAnimationFrameMap.get(key) || { usdt: null, mske: null };
+
+  stopAnimation(frames.usdt);
+  stopAnimation(frames.mske);
+
+  const nextFrames = { usdt: null, mske: null };
+  nextFrames.usdt = runValueAnimation({
+    from: cached.usdt,
+    to: nextUsdt,
+    onUpdate: (value) => {
+      item.pendingRewardUsdtText = formatAnimatedAmount(value, 2);
+      const current = recordDisplayValueMap.get(key) || { usdt: 0, mske: 0 };
+      recordDisplayValueMap.set(key, { ...current, usdt: value });
+    }
+  });
+
+  nextFrames.mske = runValueAnimation({
+    from: cached.mske,
+    to: nextMske,
+    onUpdate: (value) => {
+      item.pendingRewardMskeText = formatAnimatedAmount(value, 2);
+      const current = recordDisplayValueMap.get(key) || { usdt: 0, mske: 0 };
+      recordDisplayValueMap.set(key, { ...current, mske: value });
+    }
+  });
+
+  recordAnimationFrameMap.set(key, nextFrames);
+}
+
+function cleanupRecordAnimationState(validKeys) {
+  for (const [key, frames] of recordAnimationFrameMap.entries()) {
+    if (!validKeys.has(key)) {
+      stopAnimation(frames.usdt);
+      stopAnimation(frames.mske);
+      recordAnimationFrameMap.delete(key);
+      recordDisplayValueMap.delete(key);
+    }
+  }
 }
 
 function getHeldDays(stakeTime) {
@@ -324,15 +457,70 @@ async function fetchPendingReward(contract, provider) {
   if (!walletState.address) {
     totalPendingRewardUsdtRaw.value = 0n;
     totalPendingRewardMskeRaw.value = 0n;
+    animateTotalPendingReward(0n, 0n);
     return;
   }
   try {
     const usdtRewardRaw = await contract.balanceOf(walletState.address);
     totalPendingRewardUsdtRaw.value = usdtRewardRaw;
     totalPendingRewardMskeRaw.value = await getMskeAmountOut(usdtRewardRaw, provider);
+    animateTotalPendingReward(totalPendingRewardUsdtRaw.value, totalPendingRewardMskeRaw.value);
   } catch (error) {
     totalPendingRewardUsdtRaw.value = 0n;
     totalPendingRewardMskeRaw.value = 0n;
+    animateTotalPendingReward(0n, 0n);
+  }
+}
+
+async function fetchRecordPendingRewards(contract, provider, records) {
+  const tasks = records.map(async (item) => {
+    try {
+      const rewardUsdtRaw = await contract.rewardOfSlot(walletState.address, item.recordIndex);
+      const rewardMskeRaw = await getMskeAmountOut(rewardUsdtRaw, provider);
+      animateRecordPendingReward(item, rewardUsdtRaw, rewardMskeRaw);
+    } catch (e) {
+      animateRecordPendingReward(item, 0n, 0n);
+    }
+  });
+  await Promise.all(tasks);
+}
+
+function clearRewardTimer() {
+  if (rewardTimer) {
+    clearInterval(rewardTimer);
+    rewardTimer = null;
+  }
+}
+
+function resetRewardAnimationForTotals() {
+  stopAnimation(totalUsdtAnimationFrame);
+  stopAnimation(totalMskeAnimationFrame);
+  totalUsdtAnimationFrame = null;
+  totalMskeAnimationFrame = null;
+}
+
+function startRewardPolling() {
+  clearRewardTimer();
+  if (!walletState.isConnected || !walletState.address || activeStatus.value !== 0) return;
+  rewardTimer = setInterval(() => {
+    refreshPendingRewardsOnly();
+  }, REWARD_POLL_INTERVAL);
+}
+
+async function refreshPendingRewardsOnly() {
+  if (pendingRewardRefreshing || activeStatus.value !== 0 || !walletState.isConnected || !walletState.address) return;
+  const provider = getReadProvider();
+  if (!provider) return;
+  const contract = getReadStakingContract(provider);
+
+  pendingRewardRefreshing = true;
+  try {
+    await fetchPendingReward(contract, provider);
+    if (recordList.value.length > 0) {
+      await fetchRecordPendingRewards(contract, provider, recordList.value);
+    }
+  } finally {
+    pendingRewardRefreshing = false;
   }
 }
 
@@ -342,7 +530,10 @@ async function fetchRecords({ reset = false } = {}) {
     allRecordsList.value = [];
     totalPendingRewardUsdtRaw.value = 0n;
     totalPendingRewardMskeRaw.value = 0n;
+    animateTotalPendingReward(0n, 0n);
     totalRecords.value = 0;
+    cleanupRecordAnimationState(new Set());
+    clearRewardTimer();
     if (reset) currentPage.value = 1;
     return;
   }
@@ -381,22 +572,12 @@ async function fetchRecords({ reset = false } = {}) {
     const pageRecords = allRecordsList.value.slice(startIndex, endIndex);
 
     const mapped = pageRecords.map((record) => normalizeRecord(record, 0));
+    recordList.value = mapped;
+    cleanupRecordAnimationState(new Set(mapped.map(item => item.key)));
 
     if (activeStatus.value === 0) {
-      await Promise.all(mapped.map(async (item) => {
-        try {
-          const rewardUsdtRaw = await contract.rewardOfSlot(walletState.address, item.recordIndex);
-          const rewardMskeRaw = await getMskeAmountOut(rewardUsdtRaw, provider);
-          item.pendingRewardUsdtText = formatAmount(rewardUsdtRaw, stakingDecimals.value, 2);
-          item.pendingRewardMskeText = formatAmount(rewardMskeRaw, stakingDecimals.value, 2);
-        } catch (e) {
-          item.pendingRewardUsdtText = '0.00';
-          item.pendingRewardMskeText = '0.00';
-        }
-      }));
+      await fetchRecordPendingRewards(contract, provider, recordList.value);
     }
-
-    recordList.value = mapped;
 
   } catch (error) {
     recordList.value = [];
@@ -406,6 +587,7 @@ async function fetchRecords({ reset = false } = {}) {
     }
   } finally {
     loadingRecords.value = false;
+    startRewardPolling();
   }
 }
 
@@ -421,6 +603,7 @@ function switchStatus(status) {
   allRecordsList.value = [];
   totalRecords.value = 0;
   currentPage.value = 1;
+  clearRewardTimer();
   refreshAll();
 }
 
@@ -527,6 +710,7 @@ onMounted(async () => {
     nowTs.value = Math.floor(Date.now() / 1000);
   }, 60000);
   await refreshAll();
+  startRewardPolling();
 });
 
 onBeforeUnmount(() => {
@@ -534,6 +718,9 @@ onBeforeUnmount(() => {
     clearInterval(nowTimer);
     nowTimer = null;
   }
+  clearRewardTimer();
+  resetRewardAnimationForTotals();
+  cleanupRecordAnimationState(new Set());
 });
 </script>
 
@@ -647,6 +834,7 @@ onBeforeUnmount(() => {
   font-weight: 600;
   line-height: 1.1;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .tabs {
@@ -843,6 +1031,7 @@ onBeforeUnmount(() => {
 .row-value {
   color: #f0d9c7;
   font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .info-block.full-width {

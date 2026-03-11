@@ -35,12 +35,12 @@ const navItems = computed(() => [
     label: t('nav.orders'),
     icon: `<svg viewBox="0 0 24 24" fill="none"><rect x="4" y="3" width="16" height="18" rx="2" stroke="currentColor" stroke-width="1.8"/><path d="M8 8h8M8 12h8M8 16h5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`
   },
-  // {
-  //   name: 'Trade',
-  //   path: '/trade',
-  //   label: t('nav.trade'),
-  //   icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m11 4 3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 17H10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m13 14-3 3 3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
-  // },
+  {
+    name: 'Trade',
+    path: '/trade',
+    label: t('nav.trade'),
+    icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M4 7h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m11 4 3 3-3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M20 17H10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="m13 14-3 3 3 3" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
+  },
   {
     name: 'Friends',
     path: '/friends',
@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
   width: min(560px, calc(100% - 24px));
   padding: 10px 12px;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   border-radius: 18px;
   background: rgba(15, 10, 8, 0.86);

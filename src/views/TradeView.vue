@@ -118,6 +118,7 @@ const isExecuting = ref(false);
 const isQuoting = ref(false);
 const isImpactConfirmVisible = ref(false);
 const quoteAmountOutRaw = ref(0n);
+const quoteRequestId = ref(0);
 let quoteTimer = null;
 const HIGH_IMPACT_THRESHOLD = 5;
 const MAX_RESERVE_BPS = 10;
@@ -181,12 +182,26 @@ const swapDisabled = computed(() => {
   if (!walletState.isConnected || !walletState.address) return true;
   if (!isSwapConfigured.value) return true;
   if (!inputAmount.value || Number(inputAmount.value) <= 0) return true;
+  try {
+    const amountInRaw = ethers.parseUnits(inputAmount.value, getInputDecimals());
+    if (amountInRaw > balanceRaw.value) return true;
+  } catch (error) {
+    return true;
+  }
   return false;
 });
 
 const actionButtonText = computed(() => {
   if (isExecuting.value) return '交易提交中...';
   if (isQuoting.value) return '报价计算中...';
+  if (inputAmount.value) {
+    try {
+      const amountInRaw = ethers.parseUnits(inputAmount.value, getInputDecimals());
+      if (amountInRaw > balanceRaw.value) return '余额不足';
+    } catch (error) {
+      return '输入金额无效';
+    }
+  }
   return '确认交易';
 });
 
@@ -292,8 +307,10 @@ const refreshQuote = async () => {
     return;
   }
 
+  let requestId = 0;
   try {
     isQuoting.value = true;
+    requestId = ++quoteRequestId.value;
     const provider = getProvider();
     if (!provider) {
       clearQuote();
@@ -303,6 +320,7 @@ const refreshQuote = async () => {
     const path = [inputTokenAddress.value, outputTokenAddress.value];
     const amountsOut = await routerContract.getAmountsOut(amountInRaw, path);
     const outRaw = amountsOut[amountsOut.length - 1];
+    if (requestId !== quoteRequestId.value) return;
     quoteAmountOutRaw.value = outRaw;
 
     const slippageBps = Math.round(normalizedSlippage.value * 100);
@@ -312,6 +330,7 @@ const refreshQuote = async () => {
 
     const unitAmountRaw = 10n ** BigInt(getInputDecimals());
     const unitAmountsOut = await routerContract.getAmountsOut(unitAmountRaw, path);
+    if (requestId !== quoteRequestId.value) return;
     const unitOutRaw = unitAmountsOut[unitAmountsOut.length - 1];
     if (unitOutRaw > 0n) {
       const expectedOutBySpot = amountInRaw * unitOutRaw / unitAmountRaw;
@@ -329,9 +348,13 @@ const refreshQuote = async () => {
       priceImpactText.value = '--';
     }
   } catch (error) {
-    clearQuote();
+    if (requestId === quoteRequestId.value) {
+      clearQuote();
+    }
   } finally {
-    isQuoting.value = false;
+    if (requestId === quoteRequestId.value) {
+      isQuoting.value = false;
+    }
   }
 };
 
@@ -343,11 +366,12 @@ const scheduleQuoteRefresh = () => {
 };
 
 const setTradeDirection = (direction) => {
+  quoteRequestId.value += 1;
   tradeDirection.value = direction;
 };
 
 const onInputAmountChange = (event) => {
-  inputAmount.value = limitDecimalPlaces(event.target.value, 6);
+  inputAmount.value = limitDecimalPlaces(event.target.value, getInputDecimals());
 };
 
 const onSlippageChange = (event) => {
@@ -358,7 +382,7 @@ const handleSetMax = () => {
   if (!canUseMax.value) return;
   const reserve = balanceRaw.value * BigInt(MAX_RESERVE_BPS) / 10000n;
   const safeMax = balanceRaw.value > reserve ? balanceRaw.value - reserve : balanceRaw.value;
-  inputAmount.value = limitDecimalPlaces(ethers.formatUnits(safeMax, getInputDecimals()), 6);
+  inputAmount.value = limitDecimalPlaces(ethers.formatUnits(safeMax, getInputDecimals()), getInputDecimals());
 };
 
 const closeImpactConfirm = () => {
@@ -390,10 +414,20 @@ const executeSwap = async (skipImpactConfirm = false) => {
     showToast('Amount should be greater than zero.', 'warning');
     return;
   }
+  if (amountInRaw > balanceRaw.value) {
+    showToast('Insufficient token balance.', 'warning');
+    return;
+  }
 
   try {
     isExecuting.value = true;
-    if (quoteAmountOutRaw.value <= 0n) await refreshQuote();
+    await refreshBalance();
+    if (amountInRaw > balanceRaw.value) {
+      showToast('Insufficient token balance.', 'warning');
+      return;
+    }
+
+    await refreshQuote();
     if (quoteAmountOutRaw.value <= 0n) throw new Error('INVALID_QUOTE');
     if (!skipImpactConfirm && isHighPriceImpact.value) {
       isImpactConfirmVisible.value = true;
