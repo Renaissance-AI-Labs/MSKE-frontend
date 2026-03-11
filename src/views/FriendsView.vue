@@ -103,18 +103,18 @@
               </div>
               <div class="stat-divider"></div>
               <div class="stat-item">
-                <span class="stat-label">{{ t('friends.validFriendsCount') }}</span>
-                <span class="stat-value">
-                  {{ myStats.validFriendsCount }}
-                  <span v-if="myStats.validFriendsCount !== PLACEHOLDER" class="unit">{{ t('friends.peopleUnit') }}</span>
-                </span>
-              </div>
-              <div class="stat-divider"></div>
-              <div class="stat-item">
                 <span class="stat-label">{{ t('friends.myStake') }}</span>
                 <span class="stat-value">
                   {{ myStats.myStake }}
                   <span v-if="myStats.myStake !== PLACEHOLDER" class="unit">U</span>
+                </span>
+              </div>
+              <div class="stat-divider"></div>
+              <div class="stat-item">
+                <span class="stat-label">{{ t('friends.directInvest') }}</span>
+                <span class="stat-value highlight">
+                  {{ myStats.directInvest }}
+                  <span v-if="myStats.directInvest !== PLACEHOLDER" class="unit">U</span>
                 </span>
               </div>
             </div>
@@ -137,6 +137,22 @@
                   <span v-if="myStats.teamPerformance !== PLACEHOLDER" class="unit">U</span>
                 </span>
               </div>
+              <div class="stat-divider"></div>
+              <div class="stat-item">
+                <span class="stat-label">{{ t('friends.myStarLevel') }}</span>
+                <span class="stat-value highlight">
+                  {{ formatStarLevel(myStats.starLevel) }}
+                </span>
+              </div>
+            </div>
+
+            <div class="stats-row-divider"></div>
+
+            <div class="stats-row star-counts-row">
+              <div class="star-count-item" v-for="star in 7" :key="star">
+                <span class="star-label">V{{ star }}</span>
+                <span class="star-value">{{ myStats.downlineStarCounts[star - 1] }}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -144,59 +160,65 @@
         <div class="section-block">
           <div class="list-title-row">
             <h4 class="section-title">{{ t('friends.listTitle') }}</h4>
-            <span class="page-indicator">{{ pageIndicator }}</span>
+            <span class="page-indicator" v-if="!isLoadingFriends">{{ pageIndicator }}</span>
           </div>
 
-          <div class="friend-card" v-if="currentFriend">
-            <div class="card-header">
-              <span class="address">{{ formatWalletAddress(currentFriend.address) }}</span>
+          <div v-if="isLoadingFriends" class="loading-state">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+          </div>
+          <template v-else>
+            <div class="friend-card" v-if="currentFriend">
+              <div class="card-header">
+                <span class="address">{{ formatWalletAddress(currentFriend.address) }}</span>
+              </div>
+
+              <div class="friend-stats-grid">
+                <div class="stat-box">
+                  <span class="stat-label">{{ t('friends.friendStake') }}</span>
+                  <span class="stat-value">
+                    {{ currentFriend.friendStake }}
+                    <span v-if="currentFriend.friendStake !== PLACEHOLDER" class="unit">U</span>
+                  </span>
+                </div>
+                <div class="stat-box">
+                  <span class="stat-label">{{ t('friends.teamCount') }}</span>
+                  <span class="stat-value">
+                    {{ currentFriend.teamCount }}
+                    <span v-if="currentFriend.teamCount !== PLACEHOLDER" class="unit">{{ t('friends.peopleUnit') }}</span>
+                  </span>
+                </div>
+                <div class="stat-box">
+                  <span class="stat-label">{{ t('friends.teamPerformance') }}</span>
+                  <span class="stat-value highlight">
+                    {{ currentFriend.teamPerformance }}
+                    <span v-if="currentFriend.teamPerformance !== PLACEHOLDER" class="unit">U</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="empty-state compact" v-else>
+              <p>{{ walletState.isConnected ? t('home.noData') : t('bind.connectWalletHint') }}</p>
             </div>
 
-            <div class="friend-stats-grid">
-              <div class="stat-box">
-                <span class="stat-label">{{ t('friends.friendStake') }}</span>
-                <span class="stat-value">
-                  {{ currentFriend.friendStake }}
-                  <span v-if="currentFriend.friendStake !== PLACEHOLDER" class="unit">U</span>
-                </span>
-              </div>
-              <div class="stat-box">
-                <span class="stat-label">{{ t('friends.teamCount') }}</span>
-                <span class="stat-value">
-                  {{ currentFriend.teamCount }}
-                  <span v-if="currentFriend.teamCount !== PLACEHOLDER" class="unit">{{ t('friends.peopleUnit') }}</span>
-                </span>
-              </div>
-              <div class="stat-box">
-                <span class="stat-label">{{ t('friends.teamPerformance') }}</span>
-                <span class="stat-value highlight">
-                  {{ currentFriend.teamPerformance }}
-                  <span v-if="currentFriend.teamPerformance !== PLACEHOLDER" class="unit">U</span>
-                </span>
-              </div>
+            <div class="carousel-controls" v-if="friendList.length > 0">
+              <button class="nav-btn" @click="prevCard" :disabled="currentCardIndex === 0" aria-label="Previous friend">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 18l-6-6 6-6"></path>
+                </svg>
+              </button>
+              <button
+                class="nav-btn"
+                @click="nextCard"
+                :disabled="currentCardIndex === friendList.length - 1 || friendList.length === 0"
+                aria-label="Next friend"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"></path>
+                </svg>
+              </button>
             </div>
-          </div>
-          <div class="empty-state compact" v-else>
-            <p>{{ walletState.isConnected ? t('home.noData') : t('bind.connectWalletHint') }}</p>
-          </div>
-
-          <div class="carousel-controls">
-            <button class="nav-btn" @click="prevCard" :disabled="currentCardIndex === 0" aria-label="Previous friend">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6"></path>
-              </svg>
-            </button>
-            <button
-              class="nav-btn"
-              @click="nextCard"
-              :disabled="currentCardIndex === friendList.length - 1 || friendList.length === 0"
-              aria-label="Next friend"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6"></path>
-              </svg>
-            </button>
-          </div>
+          </template>
         </div>
       </div>
     </section>
@@ -235,6 +257,7 @@ import { walletState, formatAddress } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import referralAbi from '@/abis/referral.json';
+import stakingAbi from '@/abis/staking.json';
 import { t } from '@/i18n/index.js';
 
 const route = useRoute();
@@ -253,13 +276,16 @@ const confirmCountdown = ref(5);
 const confirmTimer = ref(null);
 const referrerTextarea = ref(null);
 const referralTextarea = ref(null);
+const isLoadingFriends = ref(false);
 
 const myStats = ref({
   friendsCount: PLACEHOLDER,
-  validFriendsCount: PLACEHOLDER,
   myStake: PLACEHOLDER,
+  directInvest: PLACEHOLDER,
   teamCount: PLACEHOLDER,
-  teamPerformance: PLACEHOLDER
+  teamPerformance: PLACEHOLDER,
+  starLevel: PLACEHOLDER,
+  downlineStarCounts: Array(7).fill(PLACEHOLDER)
 });
 const friendList = ref([]);
 const currentCardIndex = ref(0);
@@ -311,6 +337,23 @@ const formatWalletAddress = (address) => {
   return formatAddress(address);
 };
 
+const formatStarLevel = (level) => {
+  if (level === PLACEHOLDER) return PLACEHOLDER;
+  if (level === 0) return t('friends.starLevelNone');
+  return t('friends.starLevelFormat', { star: level });
+};
+
+const formatAmount = (value, decimals = 18, precision = 2) => {
+  if (!value) return '0';
+  const text = ethers.formatUnits(value, decimals);
+  const numeric = Number(text);
+  if (!Number.isFinite(numeric)) return '0';
+  return numeric.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: precision
+  });
+};
+
 const getReadContract = async () => {
   const contractAddress = getContractAddress('Referral');
   if (!contractAddress || !window.ethereum) {
@@ -318,6 +361,15 @@ const getReadContract = async () => {
   }
   const provider = new ethers.BrowserProvider(window.ethereum);
   return new ethers.Contract(contractAddress, referralAbi, provider);
+};
+
+const getStakingReadContract = async () => {
+  const contractAddress = getContractAddress('Staking');
+  if (!contractAddress || !window.ethereum) {
+    return null;
+  }
+  const provider = new ethers.BrowserProvider(window.ethereum);
+  return new ethers.Contract(contractAddress, stakingAbi, provider);
 };
 
 const getWriteContract = async () => {
@@ -500,22 +552,55 @@ const executeBindReferral = async () => {
 
 const copyText = (text) => {
   if (!isBound.value || !text) return;
+
+  // Fallback method for older browsers or when clipboard API is not available
+  const fallbackCopy = (textToCopy) => {
+    try {
+      const textArea = document.createElement('textarea');
+      textArea.value = textToCopy;
+      // Prevent scrolling to bottom
+      textArea.style.top = '0';
+      textArea.style.left = '0';
+      textArea.style.position = 'fixed';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        showToast(t('toast.bind.copySuccess'), 'success');
+      } else {
+        throw new Error('Fallback copy failed');
+      }
+    } catch (err) {
+      showToast(t('toast.bind.copyFailed'), 'error');
+    }
+  };
+
   if (navigator.clipboard && navigator.clipboard.writeText) {
     navigator.clipboard.writeText(text)
       .then(() => showToast(t('toast.bind.copySuccess'), 'success'))
-      .catch(() => showToast(t('toast.bind.copyFailed'), 'error'));
-    return;
+      .catch(() => {
+        // If clipboard API fails (e.g., due to permissions), try fallback
+        fallbackCopy(text);
+      });
+  } else {
+    // If clipboard API is not available, use fallback
+    fallbackCopy(text);
   }
-  showToast(t('toast.bind.copyFailed'), 'error');
 };
 
 const resetFriendsData = () => {
   myStats.value = {
     friendsCount: PLACEHOLDER,
-    validFriendsCount: PLACEHOLDER,
     myStake: PLACEHOLDER,
+    directInvest: PLACEHOLDER,
     teamCount: PLACEHOLDER,
-    teamPerformance: PLACEHOLDER
+    teamPerformance: PLACEHOLDER,
+    starLevel: PLACEHOLDER,
+    downlineStarCounts: Array(7).fill(PLACEHOLDER)
   };
   friendList.value = [];
   currentCardIndex.value = 0;
@@ -527,6 +612,8 @@ const loadFriendsData = async () => {
     return;
   }
 
+  isLoadingFriends.value = true;
+
   try {
     const contract = await getReadContract();
     if (!contract) {
@@ -536,6 +623,34 @@ const loadFriendsData = async () => {
 
     const referralCountRaw = await contract.getReferralCount(walletState.address);
     myStats.value.friendsCount = referralCountRaw.toString();
+
+    const stakingContract = await getStakingReadContract();
+    if (stakingContract) {
+      try {
+        const starLevelRaw = await stakingContract.userStarLevel(walletState.address);
+        myStats.value.starLevel = Number(starLevelRaw);
+
+        const teamInvestRaw = await stakingContract.teamTotalInvestValue(walletState.address);
+        myStats.value.teamPerformance = formatAmount(teamInvestRaw, 18, 2);
+
+        const directInvestRaw = await stakingContract.directTotalInvestValue(walletState.address);
+        myStats.value.directInvest = formatAmount(directInvestRaw, 18, 2);
+
+        const myStakeRaw = await stakingContract.balances(walletState.address);
+        myStats.value.myStake = formatAmount(myStakeRaw, 18, 2);
+
+        const starPromises = [];
+        for (let i = 1; i <= 7; i++) {
+          starPromises.push(stakingContract.getDownlineStarCount(walletState.address, i));
+        }
+        const starResults = await Promise.allSettled(starPromises);
+        myStats.value.downlineStarCounts = starResults.map(res => 
+          res.status === 'fulfilled' ? res.value.toString() : PLACEHOLDER
+        );
+      } catch (err) {
+        console.error('Failed to fetch staking stats:', err);
+      }
+    }
 
     const allChildren = [];
     let cursor = 0;
@@ -569,12 +684,35 @@ const loadFriendsData = async () => {
       uniqueChildren.map((address) => contract.getTeamCount(address))
     );
 
-    friendList.value = uniqueChildren.map((address, index) => ({
-      address,
-      friendStake: PLACEHOLDER,
-      teamCount: teamCountResults[index].status === 'fulfilled' ? teamCountResults[index].value.toString() : PLACEHOLDER,
-      teamPerformance: PLACEHOLDER
-    }));
+    let teamInvestResults = [];
+    let friendStakeResults = [];
+    if (stakingContract) {
+      teamInvestResults = await Promise.allSettled(
+        uniqueChildren.map((address) => stakingContract.teamTotalInvestValue(address))
+      );
+      friendStakeResults = await Promise.allSettled(
+        uniqueChildren.map((address) => stakingContract.balances(address))
+      );
+    }
+
+    friendList.value = uniqueChildren.map((address, index) => {
+      let teamPerformance = PLACEHOLDER;
+      if (teamInvestResults[index] && teamInvestResults[index].status === 'fulfilled') {
+        teamPerformance = formatAmount(teamInvestResults[index].value, 18, 2);
+      }
+
+      let friendStake = PLACEHOLDER;
+      if (friendStakeResults[index] && friendStakeResults[index].status === 'fulfilled') {
+        friendStake = formatAmount(friendStakeResults[index].value, 18, 2);
+      }
+
+      return {
+        address,
+        friendStake,
+        teamCount: teamCountResults[index].status === 'fulfilled' ? teamCountResults[index].value.toString() : PLACEHOLDER,
+        teamPerformance
+      };
+    });
 
     myStats.value.teamCount = uniqueChildren.length.toString();
 
@@ -583,6 +721,8 @@ const loadFriendsData = async () => {
     }
   } catch (error) {
     resetFriendsData();
+  } finally {
+    isLoadingFriends.value = false;
   }
 };
 
@@ -963,6 +1103,38 @@ onBeforeUnmount(() => {
   margin-top: 3px;
 }
 
+.star-counts-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+
+.star-count-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.star-count-item > * + * {
+  margin-top: 4px;
+}
+
+.star-label {
+  color: #d7c0b0;
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.star-value {
+  color: #ffb073;
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
 .stat-divider {
   width: 1px;
   height: 30px;
@@ -996,6 +1168,34 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.loading-state {
+  min-height: 140px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 114, 67, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #af9f90;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 114, 67, 0.2);
+  border-top-color: #ff7243;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .page-indicator {
