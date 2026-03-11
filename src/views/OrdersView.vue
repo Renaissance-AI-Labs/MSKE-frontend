@@ -812,6 +812,21 @@ onBeforeUnmount(() => {
   flex: 1;
 }
 
+.order-grid-horizontal .row:first-child {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.order-grid-horizontal .row:nth-child(2) {
+  align-items: center;
+  text-align: center;
+}
+
+.order-grid-horizontal .row:last-child {
+  align-items: flex-end;
+  text-align: right;
+}
+
 .row-horizontal {
   flex-direction: row;
   align-items: center;

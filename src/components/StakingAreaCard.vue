@@ -54,6 +54,7 @@
           type="text"
           inputmode="decimal"
           :placeholder="amountPlaceholder"
+          :disabled="isQuotaExhausted"
           @input="onAmountInput"
         />
         <div class="input-suffix">USDT</div>
@@ -134,7 +135,15 @@ const parsedStakeAmount = computed(() => {
 const usdtBalanceText = computed(() => formatAmount(usdtBalanceRaw.value, usdtDecimals.value));
 const minStakeText = computed(() => formatAmount(minStakeRaw.value, usdtDecimals.value));
 const maxStakeText = computed(() => maxStakeRaw.value > 0n ? formatAmount(maxStakeRaw.value, usdtDecimals.value) : '∞');
-const amountPlaceholder = computed(() => t('staking.stakePlaceholder', { min: minStakeText.value, max: maxStakeText.value }));
+const isQuotaExhausted = computed(() => {
+  if (maxStakeRaw.value === 0n) return true;
+  const threshold = ethers.parseUnits("200", usdtDecimals.value);
+  return maxStakeRaw.value <= threshold;
+});
+const amountPlaceholder = computed(() => {
+  if (isQuotaExhausted.value) return t('staking.noQuota');
+  return t('staking.stakePlaceholder', { min: minStakeText.value, max: maxStakeText.value });
+});
 const hasValidAmount = computed(() => Boolean(parsedStakeAmount.value && parsedStakeAmount.value > 0n));
 const needsApproval = computed(() => {
   if (!hasValidAmount.value) return false;
@@ -148,6 +157,7 @@ const primaryButtonText = computed(() => {
   if (!hasWalletReady.value) return t('staking.btn.connectWallet');
   if (!isContractsConfigured.value) return t('staking.btn.contractNotConfigured');
   if (!hasReferrer.value) return t('staking.btn.bindReferrerFirst');
+  if (isQuotaExhausted.value) return t('staking.noQuota');
   if (!stakeAmount.value) return t('staking.btn.stake');
   if (!hasValidAmount.value) return t('staking.btn.enterValidAmount');
   if (parsedStakeAmount.value > usdtBalanceRaw.value) return t('staking.btn.insufficientBalance');
@@ -156,7 +166,7 @@ const primaryButtonText = computed(() => {
 });
 
 const actionDisabled = computed(() => {
-  return approving.value || staking.value || loadingData.value || checkingAllowance.value || !isContractsConfigured.value;
+  return approving.value || staking.value || loadingData.value || checkingAllowance.value || !isContractsConfigured.value || isQuotaExhausted.value;
 });
 
 function sanitizeDecimalInput(value) {
@@ -172,10 +182,22 @@ function onAmountInput(event) {
   stakeAmount.value = sanitizeDecimalInput(event.target.value);
 }
 
-function formatAmount(amountRaw, decimals, precision = 4) {
+function formatAmount(amountRaw, decimals, precision = 4, exact = false) {
   const formatted = ethers.formatUnits(amountRaw, decimals);
   const num = Number(formatted);
   if (!Number.isFinite(num)) return '0';
+  
+  if (exact) {
+    // Keep exact precision without rounding up/down
+    const str = formatted.toString();
+    const parts = str.split('.');
+    if (parts.length === 1) {
+      return parts[0] + '.' + '0'.repeat(precision);
+    }
+    const decimalPart = parts[1].padEnd(precision, '0').slice(0, precision);
+    return `${parts[0]}.${decimalPart}`;
+  }
+  
   return num.toLocaleString('en-US', {
     minimumFractionDigits: 0,
     maximumFractionDigits: precision
@@ -214,7 +236,8 @@ async function fetchDashboardData() {
       taxRatioRaw,
       burnedRaw,
       totalStakingRaw,
-      mskeDecimals
+      mskeDecimals,
+      maxStakeAmountRaw
     ] = await Promise.all([
       mskeContract.getTokenPriceUsdt().catch(() => 0n),
       mskeContract.getReserveU().catch(() => 0n),
@@ -222,13 +245,16 @@ async function fetchDashboardData() {
       mskeContract.dumpTaxRatio().catch(() => 5n),
       mskeContract.balanceOf(DEAD_ADDRESS).catch(() => 0n),
       stakingContract.totalSupply().catch(() => 0n),
-      mskeContract.decimals().catch(() => 18n)
+      mskeContract.decimals().catch(() => 18n),
+      stakingContract.maxStakeAmount().catch(() => 0n)
     ]);
 
-    tokenPrice.value = formatAmount(priceRaw, 18, 6);
-    reserveU.value = formatAmount(reserveURaw, 18, 2);
-    totalStaking.value = formatAmount(totalStakingRaw, 18, 2);
-    totalBurned.value = formatAmount(burnedRaw, Number(mskeDecimals), 2);
+    tokenPrice.value = formatAmount(priceRaw, 18, 6, true);
+    reserveU.value = formatAmount(reserveURaw, 18, 2, true);
+    totalStaking.value = formatAmount(totalStakingRaw, 18, 2, true);
+    totalBurned.value = formatAmount(burnedRaw, Number(mskeDecimals), 2, true);
+
+    console.log('[StakingAreaCard] Current Max Stake Amount:', formatAmount(maxStakeAmountRaw, 18, 2, true));
 
     const [pctScaled, position] = changeData;
     if (position === 0n || position === 0) {
@@ -263,13 +289,22 @@ async function refreshCardData() {
     const stake = new ethers.Contract(stakingAddress.value, stakingAbi, provider);
     const referral = new ethers.Contract(referralAddress.value, referralAbi, provider);
 
-    const [decimalsRaw, balanceRaw, minStakeAmountRaw, maxStakeAmountRaw, referrerAddress] = await Promise.all([
+    const [decimalsRaw, balanceRaw, minStakeAmountRaw, maxStakeAmountRaw, referrerAddress, starLevel] = await Promise.all([
       usdt.decimals(),
       usdt.balanceOf(walletState.address),
       stake.minStakeAmount(),
       stake.maxStakeAmount(),
-      referral.getReferral(walletState.address)
+      referral.getReferral(walletState.address),
+      stake.userStarLevel(walletState.address)
     ]);
+    
+    console.log('[StakingAreaCard] User Data:', {
+      address: walletState.address,
+      maxStakeAmount: ethers.formatUnits(maxStakeAmountRaw, Number(decimalsRaw)),
+      starLevel: Number(starLevel),
+      referrer: referrerAddress,
+      hasReferrer: Boolean(referrerAddress && referrerAddress !== ethers.ZeroAddress)
+    });
 
     usdtDecimals.value = Number(decimalsRaw);
     usdtBalanceRaw.value = balanceRaw;
@@ -400,6 +435,10 @@ async function handlePrimaryAction() {
   }
   if (!hasReferrer.value) {
     showToast(t('toast.staking.bindReferrerFirst'), 'warning');
+    return;
+  }
+  if (isQuotaExhausted.value) {
+    showToast(t('toast.staking.maxStakeLimit'), 'warning');
     return;
   }
   if (!hasValidAmount.value) {
@@ -618,6 +657,7 @@ onMounted(async () => {
 .amount-input {
   width: 100%;
   height: 48px;
+  line-height: 48px;
   border-radius: 12px;
   border: 1px solid rgba(255, 114, 67, 0.25);
   background: rgba(0, 0, 0, 0.4);
