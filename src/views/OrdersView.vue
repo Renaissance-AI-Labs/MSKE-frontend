@@ -22,8 +22,8 @@
             <p class="stat-value">{{ totalPendingRewardUsdtText }} U <span class="sub-value">(≈ {{ totalPendingRewardMskeText }} MSKE)</span></p>
           </div>
           <div class="stat-item">
-            <p class="stat-label">{{ t('orders.currentOrders') }}</p>
-            <p class="stat-value">{{ totalRecords }}</p>
+            <p class="stat-label">{{ t('orders.mskexPoints') }}</p>
+            <p class="stat-value">{{ mskexPointsText }}</p>
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@
                   <p class="order-title">{{ t('orders.orderNumber', { index: record.displayIndex }) }}</p>
                   <span class="order-time">{{ record.stakeTimeText }}</span>
                 </div>
-                <p class="order-days" v-html="t('orders.heldDays', { days: `<span class='highlight-days'>${record.holdDays}</span>` })"></p>
+                <p v-if="activeStatus === 0" class="order-days" v-html="t('orders.heldDays', { days: `<span class='highlight-days'>${record.holdDays}</span>` })"></p>
               </div>
             </div>
 
@@ -122,9 +122,10 @@ import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import { t } from '@/i18n/index.js';
 import stakingAbi from '@/abis/staking.json';
+import erc20Abi from '@/abis/erc20.json';
 import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
 
-const PAGE_LIMIT = 2;
+const PAGE_LIMIT = 5;
 const FALLBACK_BASE_PERCENT = 10000n;
 const REWARD_POLL_INTERVAL = 6000;
 const VALUE_ANIMATION_DURATION = 1800;
@@ -141,6 +142,7 @@ const oneDaySeconds = computed(() => isTestnet.value ? 60 : 86400);
 const activeStatus = ref(0);
 const totalPendingRewardUsdtRaw = ref(0n);
 const totalPendingRewardMskeRaw = ref(0n);
+const mskexPointsRaw = ref(0n);
 const totalPendingRewardUsdtDisplay = ref(0);
 const totalPendingRewardMskeDisplay = ref(0);
 const recordList = ref([]);
@@ -175,9 +177,11 @@ const stakingAddress = computed(() => getContractAddress('Staking'));
 const routerAddress = computed(() => getContractAddress('Router'));
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
+const mskexAddress = computed(() => getContractAddress('MSKEX'));
 
 const totalPendingRewardUsdtText = computed(() => formatAnimatedAmount(totalPendingRewardUsdtDisplay.value, 2));
 const totalPendingRewardMskeText = computed(() => formatAnimatedAmount(totalPendingRewardMskeDisplay.value, 2));
+const mskexPointsText = computed(() => formatAmount(mskexPointsRaw.value, 18, 2));
 const totalPages = computed(() => Math.ceil(totalRecords.value / PAGE_LIMIT) || 1);
 const unstakeConfirmRateText = computed(() => {
   if (!pendingUnstakeRecord.value) return '--';
@@ -472,6 +476,19 @@ async function fetchPendingReward(contract, provider) {
   }
 }
 
+async function fetchMskexPoints(provider) {
+  if (!walletState.address || !provider || !ethers.isAddress(mskexAddress.value || '')) {
+    mskexPointsRaw.value = 0n;
+    return;
+  }
+  try {
+    const mskexContract = new ethers.Contract(mskexAddress.value, erc20Abi, provider);
+    mskexPointsRaw.value = await mskexContract.balanceOf(walletState.address);
+  } catch (error) {
+    mskexPointsRaw.value = 0n;
+  }
+}
+
 async function fetchRecordPendingRewards(contract, provider, records) {
   const tasks = records.map(async (item) => {
     try {
@@ -516,6 +533,7 @@ async function refreshPendingRewardsOnly() {
   pendingRewardRefreshing = true;
   try {
     await fetchPendingReward(contract, provider);
+    await fetchMskexPoints(provider);
     if (recordList.value.length > 0) {
       await fetchRecordPendingRewards(contract, provider, recordList.value);
     }
@@ -530,6 +548,7 @@ async function fetchRecords({ reset = false } = {}) {
     allRecordsList.value = [];
     totalPendingRewardUsdtRaw.value = 0n;
     totalPendingRewardMskeRaw.value = 0n;
+    mskexPointsRaw.value = 0n;
     animateTotalPendingReward(0n, 0n);
     totalRecords.value = 0;
     cleanupRecordAnimationState(new Set());
@@ -546,7 +565,7 @@ async function fetchRecords({ reset = false } = {}) {
     if (reset) {
       currentPage.value = 1;
       loadingRecords.value = true;
-      await Promise.all([fetchConfigData(contract), fetchPendingReward(contract, provider)]);
+      await Promise.all([fetchConfigData(contract), fetchPendingReward(contract, provider), fetchMskexPoints(provider)]);
 
       let allFetchedRecords = [];
       let currentCursor = 0n;
