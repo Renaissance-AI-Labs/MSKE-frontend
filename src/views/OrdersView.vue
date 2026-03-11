@@ -47,15 +47,15 @@
           <div class="order-content-grid">
             <div class="info-block">
               <div class="order-grid-horizontal">
-                <div class="row">
+                <div class="row align-left">
                   <span class="row-label">{{ t('orders.stakePrincipal') }}</span>
                   <span class="row-value strong">{{ record.amountText }} U</span>
                 </div>
-                <div class="row" v-if="activeStatus === 0">
+                <div class="row align-center" v-if="activeStatus === 0">
                   <span class="row-label">{{ t('orders.dailyRewardRate') }}</span>
                   <span class="row-value highlight">{{ record.dailyRewardRateText }}</span>
                 </div>
-                <div class="row" v-if="activeStatus === 0">
+                <div class="row align-right" v-if="activeStatus === 0">
                   <span class="row-label">{{ t('orders.currentUnstakeRate') }}</span>
                   <span class="row-value warn">{{ record.unstakeRateText }}</span>
                 </div>
@@ -810,6 +810,18 @@ onBeforeUnmount(() => {
   font-size: 0.8rem;
   /* gap: 2px; */
   flex: 1;
+}
+
+.row.align-left {
+  align-items: flex-start;
+}
+
+.row.align-center {
+  align-items: center;
+}
+
+.row.align-right {
+  align-items: flex-end;
 }
 
 .row-horizontal {
