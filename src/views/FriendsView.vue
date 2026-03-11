@@ -160,59 +160,65 @@
         <div class="section-block">
           <div class="list-title-row">
             <h4 class="section-title">{{ t('friends.listTitle') }}</h4>
-            <span class="page-indicator">{{ pageIndicator }}</span>
+            <span class="page-indicator" v-if="!isLoadingFriends">{{ pageIndicator }}</span>
           </div>
 
-          <div class="friend-card" v-if="currentFriend">
-            <div class="card-header">
-              <span class="address">{{ formatWalletAddress(currentFriend.address) }}</span>
+          <div v-if="isLoadingFriends" class="loading-state">
+            <div class="spinner"></div>
+            <p>加载中...</p>
+          </div>
+          <template v-else>
+            <div class="friend-card" v-if="currentFriend">
+              <div class="card-header">
+                <span class="address">{{ formatWalletAddress(currentFriend.address) }}</span>
+              </div>
+
+              <div class="friend-stats-grid">
+                <div class="stat-box">
+                  <span class="stat-label">{{ t('friends.friendStake') }}</span>
+                  <span class="stat-value">
+                    {{ currentFriend.friendStake }}
+                    <span v-if="currentFriend.friendStake !== PLACEHOLDER" class="unit">U</span>
+                  </span>
+                </div>
+                <div class="stat-box">
+                  <span class="stat-label">{{ t('friends.teamCount') }}</span>
+                  <span class="stat-value">
+                    {{ currentFriend.teamCount }}
+                    <span v-if="currentFriend.teamCount !== PLACEHOLDER" class="unit">{{ t('friends.peopleUnit') }}</span>
+                  </span>
+                </div>
+                <div class="stat-box">
+                  <span class="stat-label">{{ t('friends.teamPerformance') }}</span>
+                  <span class="stat-value highlight">
+                    {{ currentFriend.teamPerformance }}
+                    <span v-if="currentFriend.teamPerformance !== PLACEHOLDER" class="unit">U</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div class="empty-state compact" v-else>
+              <p>{{ walletState.isConnected ? t('home.noData') : t('bind.connectWalletHint') }}</p>
             </div>
 
-            <div class="friend-stats-grid">
-              <div class="stat-box">
-                <span class="stat-label">{{ t('friends.friendStake') }}</span>
-                <span class="stat-value">
-                  {{ currentFriend.friendStake }}
-                  <span v-if="currentFriend.friendStake !== PLACEHOLDER" class="unit">U</span>
-                </span>
-              </div>
-              <div class="stat-box">
-                <span class="stat-label">{{ t('friends.teamCount') }}</span>
-                <span class="stat-value">
-                  {{ currentFriend.teamCount }}
-                  <span v-if="currentFriend.teamCount !== PLACEHOLDER" class="unit">{{ t('friends.peopleUnit') }}</span>
-                </span>
-              </div>
-              <div class="stat-box">
-                <span class="stat-label">{{ t('friends.teamPerformance') }}</span>
-                <span class="stat-value highlight">
-                  {{ currentFriend.teamPerformance }}
-                  <span v-if="currentFriend.teamPerformance !== PLACEHOLDER" class="unit">U</span>
-                </span>
-              </div>
+            <div class="carousel-controls" v-if="friendList.length > 0">
+              <button class="nav-btn" @click="prevCard" :disabled="currentCardIndex === 0" aria-label="Previous friend">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M15 18l-6-6 6-6"></path>
+                </svg>
+              </button>
+              <button
+                class="nav-btn"
+                @click="nextCard"
+                :disabled="currentCardIndex === friendList.length - 1 || friendList.length === 0"
+                aria-label="Next friend"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 18l6-6-6-6"></path>
+                </svg>
+              </button>
             </div>
-          </div>
-          <div class="empty-state compact" v-else>
-            <p>{{ walletState.isConnected ? t('home.noData') : t('bind.connectWalletHint') }}</p>
-          </div>
-
-          <div class="carousel-controls">
-            <button class="nav-btn" @click="prevCard" :disabled="currentCardIndex === 0" aria-label="Previous friend">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M15 18l-6-6 6-6"></path>
-              </svg>
-            </button>
-            <button
-              class="nav-btn"
-              @click="nextCard"
-              :disabled="currentCardIndex === friendList.length - 1 || friendList.length === 0"
-              aria-label="Next friend"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M9 18l6-6-6-6"></path>
-              </svg>
-            </button>
-          </div>
+          </template>
         </div>
       </div>
     </section>
@@ -270,6 +276,7 @@ const confirmCountdown = ref(5);
 const confirmTimer = ref(null);
 const referrerTextarea = ref(null);
 const referralTextarea = ref(null);
+const isLoadingFriends = ref(false);
 
 const myStats = ref({
   friendsCount: PLACEHOLDER,
@@ -605,6 +612,8 @@ const loadFriendsData = async () => {
     return;
   }
 
+  isLoadingFriends.value = true;
+
   try {
     const contract = await getReadContract();
     if (!contract) {
@@ -712,6 +721,8 @@ const loadFriendsData = async () => {
     }
   } catch (error) {
     resetFriendsData();
+  } finally {
+    isLoadingFriends.value = false;
   }
 };
 
@@ -1157,6 +1168,34 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.loading-state {
+  min-height: 140px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 114, 67, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #af9f90;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid rgba(255, 114, 67, 0.2);
+  border-top-color: #ff7243;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .page-indicator {
