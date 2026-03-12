@@ -138,7 +138,7 @@
                 </span>
               </div>
               <div class="stat-divider"></div>
-              <div class="stat-item">
+              <div class="stat-item" :class="getStarAccentClass(myStats.starLevel)">
                 <span class="stat-label">{{ t('friends.myStarLevel') }}</span>
                 <span class="stat-value highlight">
                   {{ formatStarLevel(myStats.starLevel) }}
@@ -150,7 +150,7 @@
 
             <div class="stats-row star-counts-row">
               <div class="star-count-title">{{ t('friends.friendStarLevel') }}</div>
-              <div class="star-count-item" v-for="star in 7" :key="star">
+              <div class="star-count-item" v-for="star in 7" :key="star" :class="getStarAccentClass(star)">
                 <span class="star-label">{{ star }}{{ t('friends.star') }}</span>
                 <span class="star-value">{{ myStats.downlineStarCounts[star - 1] }}</span>
               </div>
@@ -298,6 +298,42 @@ const pageIndicator = computed(() => {
   }
   return `${currentCardIndex.value + 1} / ${friendList.value.length}`;
 });
+const isMockFriendsPreview = computed(() => {
+  if (!import.meta.env.DEV) return false;
+  const mockFlag = String(route.query.mockFriends ?? '').toLowerCase();
+  return mockFlag === '1' || mockFlag === 'true' || mockFlag === 'yes';
+});
+
+const mockFriendsStats = {
+  friendsCount: '12',
+  myStake: '18,600',
+  directInvest: '42,800',
+  teamCount: '36',
+  teamPerformance: '186,500',
+  starLevel: 6,
+  downlineStarCounts: ['9', '6', '4', '3', '2', '1', '1']
+};
+
+const mockFriendList = [
+  {
+    address: '0xA17B4b7d6322f65A8dF7E34f2e12c1D6a9eA1C51',
+    friendStake: '5,200',
+    teamCount: '9',
+    teamPerformance: '31,800'
+  },
+  {
+    address: '0xB98f093E4A671Cb9f4F2d4fAe2A8ef23F5b9C240',
+    friendStake: '8,750',
+    teamCount: '12',
+    teamPerformance: '57,400'
+  },
+  {
+    address: '0xC24d7f2A6Ebd10519D7eE2A8A9F3aee1307A5E11',
+    friendStake: '12,300',
+    teamCount: '15',
+    teamPerformance: '88,600'
+  }
+];
 
 const myReferralLink = computed(() => {
   if (!walletState.address) {
@@ -342,6 +378,15 @@ const formatStarLevel = (level) => {
   if (level === PLACEHOLDER) return PLACEHOLDER;
   if (level === 0) return t('friends.starLevelNone');
   return t('friends.starLevelFormat', { star: level });
+};
+
+const getStarAccentClass = (level) => {
+  if (typeof level !== 'number') return [];
+  if (level >= 1 && level <= 4) return ['star-accent', 'star-accent-lv1to4'];
+  if (level === 5) return ['star-accent', 'star-accent-lv5'];
+  if (level === 6) return ['star-accent', 'star-accent-lv6'];
+  if (level === 7) return ['star-accent', 'star-accent-lv7'];
+  return [];
 };
 
 const formatAmount = (value, decimals = 18, precision = 2) => {
@@ -607,7 +652,19 @@ const resetFriendsData = () => {
   currentCardIndex.value = 0;
 };
 
+const applyMockFriendsPreview = () => {
+  myStats.value = { ...mockFriendsStats };
+  friendList.value = mockFriendList.map((friend) => ({ ...friend }));
+  currentCardIndex.value = 0;
+};
+
 const loadFriendsData = async () => {
+  if (isMockFriendsPreview.value) {
+    applyMockFriendsPreview();
+    isLoadingFriends.value = false;
+    return;
+  }
+
   if (!walletState.isConnected || !walletState.address) {
     resetFriendsData();
     return;
@@ -756,6 +813,12 @@ onMounted(async () => {
 
 watch(() => route.query.tab, () => {
   syncTabFromRoute();
+});
+
+watch(() => route.query.mockFriends, async () => {
+  if (activeTab.value === 'friends') {
+    await loadFriendsData();
+  }
 });
 
 watch(activeTab, async (tab) => {
@@ -1100,6 +1163,26 @@ onBeforeUnmount(() => {
   display: grid;
 }
 
+.stat-item.star-accent,
+.star-count-item.star-accent {
+  position: relative;
+  isolation: isolate;
+}
+
+.stat-item.star-accent::after,
+.star-count-item.star-accent::after {
+  content: '';
+  position: absolute;
+  inset: -5px 2px;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: 999px;
+  background: radial-gradient(circle at 50% 58%, rgba(var(--star-accent-glow), 0.28), transparent 72%);
+  filter: blur(14px);
+  opacity: 0.82;
+  animation: starAccentAura 7.2s ease-in-out infinite;
+}
+
 .stat-item > * + * {
   margin-top: 3px;
 }
@@ -1142,6 +1225,50 @@ onBeforeUnmount(() => {
   font-size: 0.85rem;
   font-weight: 700;
   line-height: 1.2;
+}
+
+.star-accent-lv1to4 {
+  --star-accent-gradient: linear-gradient(135deg, #ffffff 0%, #fffdf8 45%, #efe7d8 100%);
+  --star-accent-glow: 255, 245, 230;
+}
+
+.star-accent-lv5 {
+  --star-accent-gradient: linear-gradient(135deg, #fffef7 0%, #fff7dc 38%, #f2ddb0 72%, #e4bc67 100%);
+  --star-accent-glow: 245, 224, 172;
+}
+
+.star-accent-lv6 {
+  --star-accent-gradient: linear-gradient(135deg, #fffde9 0%, #fff2b8 28%, #f6d36d 58%, #dea537 100%);
+  --star-accent-glow: 248, 210, 104;
+}
+
+.star-accent-lv7 {
+  --star-accent-gradient: linear-gradient(135deg, #fffbe8 0%, #fff0b4 24%, #f8d66e 58%, #e5aa2e 100%);
+  --star-accent-glow: 248, 207, 92;
+}
+
+.stat-item.star-accent .stat-label,
+.stat-item.star-accent .stat-value,
+.star-count-item.star-accent .star-label,
+.star-count-item.star-accent .star-value {
+  background-image: var(--star-accent-gradient);
+  background-size: 200% 100%;
+  background-position: 0% 50%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: starAccentFlow 8s ease-in-out infinite;
+}
+
+.stat-item.star-accent .stat-label,
+.star-count-item.star-accent .star-label {
+  font-weight: 600;
+}
+
+.stat-item.star-accent .stat-value,
+.star-count-item.star-accent .star-value {
+  text-shadow: 0 0 18px rgba(var(--star-accent-glow), 0.24);
+  filter: drop-shadow(0 0 10px rgba(var(--star-accent-glow), 0.12));
 }
 
 .stat-divider {
@@ -1204,6 +1331,28 @@ onBeforeUnmount(() => {
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes starAccentFlow {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes starAccentAura {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.72;
+    transform: scale(1.02);
   }
 }
 
