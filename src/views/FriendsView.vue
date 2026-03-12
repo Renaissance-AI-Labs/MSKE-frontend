@@ -298,42 +298,6 @@ const pageIndicator = computed(() => {
   }
   return `${currentCardIndex.value + 1} / ${friendList.value.length}`;
 });
-const isMockFriendsPreview = computed(() => {
-  if (!import.meta.env.DEV) return false;
-  const mockFlag = String(route.query.mockFriends ?? '').toLowerCase();
-  return mockFlag === '1' || mockFlag === 'true' || mockFlag === 'yes';
-});
-
-const mockFriendsStats = {
-  friendsCount: '12',
-  myStake: '18,600',
-  directInvest: '42,800',
-  teamCount: '36',
-  teamPerformance: '186,500',
-  starLevel: 6,
-  downlineStarCounts: ['9', '6', '4', '3', '2', '1', '1']
-};
-
-const mockFriendList = [
-  {
-    address: '0xA17B4b7d6322f65A8dF7E34f2e12c1D6a9eA1C51',
-    friendStake: '5,200',
-    teamCount: '9',
-    teamPerformance: '31,800'
-  },
-  {
-    address: '0xB98f093E4A671Cb9f4F2d4fAe2A8ef23F5b9C240',
-    friendStake: '8,750',
-    teamCount: '12',
-    teamPerformance: '57,400'
-  },
-  {
-    address: '0xC24d7f2A6Ebd10519D7eE2A8A9F3aee1307A5E11',
-    friendStake: '12,300',
-    teamCount: '15',
-    teamPerformance: '88,600'
-  }
-];
 
 const myReferralLink = computed(() => {
   if (!walletState.address) {
@@ -652,19 +616,7 @@ const resetFriendsData = () => {
   currentCardIndex.value = 0;
 };
 
-const applyMockFriendsPreview = () => {
-  myStats.value = { ...mockFriendsStats };
-  friendList.value = mockFriendList.map((friend) => ({ ...friend }));
-  currentCardIndex.value = 0;
-};
-
 const loadFriendsData = async () => {
-  if (isMockFriendsPreview.value) {
-    applyMockFriendsPreview();
-    isLoadingFriends.value = false;
-    return;
-  }
-
   if (!walletState.isConnected || !walletState.address) {
     resetFriendsData();
     return;
@@ -813,12 +765,6 @@ onMounted(async () => {
 
 watch(() => route.query.tab, () => {
   syncTabFromRoute();
-});
-
-watch(() => route.query.mockFriends, async () => {
-  if (activeTab.value === 'friends') {
-    await loadFriendsData();
-  }
 });
 
 watch(activeTab, async (tab) => {
