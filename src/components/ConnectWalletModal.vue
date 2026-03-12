@@ -15,7 +15,7 @@
             <ul>
               <li v-for="wallet in availableWallets" :key="wallet.id">
                 <button class="wallet-option-btn" @click.prevent="handleConnect(wallet.id)">
-                  <img :src="getWalletIcon(wallet.id)" :alt="wallet.name" class="wallet-icon">
+                  <img :src="getWalletIcon(wallet.id)" :alt="wallet.name" :class="['wallet-icon', { 'wallet-icon-okx': wallet.id === 'okx' }]">
                   <span>{{ wallet.name }}</span>
                 </button>
               </li>
@@ -232,6 +232,11 @@ export default {
   height: 32px;
   margin-right: 16px;
   border-radius: 8px;
+  object-fit: contain;
+}
+
+.wallet-icon-okx {
+  background: #fff;
 }
 
 .no-wallet-view {
