@@ -9,6 +9,7 @@
 
     <section class="trade-panel">
       <div class="panel-decor"></div>
+      <div v-if="showDexscreenerChart" class="chart-frame" v-html="dexscreenerEmbedHtml"></div>
       <div class="mode-tabs">
         <button class="mode-btn" :class="{ active: tradeDirection === 'sell' }" @click="setTradeDirection('sell')">
           卖出
@@ -107,6 +108,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
+import { APP_ENV } from '@/services/environment';
 import { showToast } from '@/services/notification';
 import { t } from '@/i18n/index.js';
 import erc20Abi from '@/abis/erc20.json';
@@ -118,6 +120,8 @@ const DEFAULT_SLIPPAGE_BY_DIRECTION = {
   sell: '35',
   buy: '5'
 };
+const PROD_DEXSCREENER_EMBED = `<style>#dexscreener-embed{position:relative;width:100%;padding-bottom:125%;}@media(min-width:1400px){#dexscreener-embed{padding-bottom:65%;}}#dexscreener-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style><div id="dexscreener-embed"><iframe src="https://dexscreener.com/bsc/0x7130d2a12b9bcbfAe4f2634d864a1ee1ce3ead9c?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartDefaultOnMobile=1&chartTheme=dark&theme=dark&chartStyle=0&chartType=usd&interval=15"></iframe></div>`;
+const DEV_DEXSCREENER_EMBED = `<style>#dexscreener-embed{position:relative;width:100%;padding-bottom:125%;}@media(min-width:1400px){#dexscreener-embed{padding-bottom:65%;}}#dexscreener-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style><div id="dexscreener-embed"><iframe src="https://dexscreener.com/bsc/0x7130d2a12b9bcbfAe4f2634d864a1ee1ce3ead9c?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartDefaultOnMobile=1&chartTheme=dark&theme=dark&chartStyle=0&chartType=usd&interval=15"></iframe></div>`;
 
 const normalizeSlippageValue = (value, fallback) => {
   const digitsOnly = String(value || '').replace(/[^\d]/g, '');
@@ -171,6 +175,8 @@ const tokenDecimals = ref({
 const routerAddress = computed(() => getContractAddress('Router'));
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
+const showDexscreenerChart = computed(() => APP_ENV !== 'PROD');
+const dexscreenerEmbedHtml = computed(() => (APP_ENV === 'PROD' ? PROD_DEXSCREENER_EMBED : DEV_DEXSCREENER_EMBED));
 
 const inputSymbol = computed(() => (tradeDirection.value === 'buy' ? 'USDT' : 'MSKE'));
 const outputSymbol = computed(() => (tradeDirection.value === 'buy' ? 'MSKE' : 'USDT'));
@@ -709,6 +715,26 @@ onBeforeUnmount(() => {
   height: 3px;
   margin: -14px -14px 12px;
   background: linear-gradient(90deg, transparent 0%, rgba(255, 69, 0, 0.55) 50%, transparent 100%);
+}
+
+.chart-frame {
+  height: 50vh;
+  min-height: 320px;
+  max-height: 540px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 99, 50, 0.24);
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.chart-frame :deep(#dexscreener-embed) {
+  height: 100%;
+  padding-bottom: 0 !important;
+}
+
+.chart-frame :deep(#dexscreener-embed iframe) {
+  height: 100% !important;
 }
 
 .page-header {
