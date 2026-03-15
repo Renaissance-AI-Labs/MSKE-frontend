@@ -15,7 +15,7 @@
             <ul>
               <li v-for="wallet in availableWallets" :key="wallet.id">
                 <button class="wallet-option-btn" @click.prevent="handleConnect(wallet.id)">
-                  <img :src="getWalletIcon(wallet.id)" :alt="wallet.name" class="wallet-icon">
+                  <img :src="getWalletIcon(wallet.id)" :alt="wallet.name" :class="['wallet-icon', { 'wallet-icon-okx': wallet.id === 'okx' }]">
                   <span>{{ wallet.name }}</span>
                 </button>
               </li>
@@ -115,81 +115,197 @@ export default {
 </script>
 
 <style scoped>
-/* FUNCTIONAL / LAYOUT STYLES ONLY */
-
 .modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100vh;
-  background-color: rgba(0, 0, 0, 0.5); /* Basic dimming */
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
   align-items: center;
   z-index: 1050;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .modal-content {
   position: relative;
   width: 90%;
-  max-width: 400px;
-  padding: 20px;
-  background: #fff; /* Basic white background for readability */
-  border: 1px solid #ccc; /* Basic border */
+  max-width: 420px;
+  padding: 30px;
+  background: linear-gradient(160deg, rgba(25, 25, 25, 0.95), rgba(15, 15, 15, 0.98));
+  border: 1px solid rgba(255, 69, 0, 0.2);
+  border-radius: 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 20px rgba(255, 69, 0, 0.1);
+  color: #fff;
+  transform: translateY(0);
+  animation: slideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .modal-header {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: 10px;
+  margin-bottom: 15px;
 }
 
 .close-button {
-  background: none;
-  border: none;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #a0a0a0;
   font-size: 1.2rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background: rgba(255, 69, 0, 0.1);
+  color: #ff4500;
+  border-color: rgba(255, 69, 0, 0.3);
+  transform: rotate(90deg);
+}
+
+.modal-body h3 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  text-align: center;
+  background: linear-gradient(135deg, #fff, #a0a0a0);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.connect-text {
+  text-align: center;
+  color: #888;
+  font-size: 0.9rem;
+  margin-bottom: 25px;
 }
 
 .wallet-list ul {
   list-style: none;
   padding: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.wallet-list li {
-  margin-bottom: 10px;
+.wallet-list ul > li {
+  margin-bottom: 12px;
+}
+
+.wallet-list ul > li:last-child {
+  margin-bottom: 0;
 }
 
 .wallet-option-btn {
   display: flex;
   align-items: center;
   width: 100%;
-  padding: 10px;
-  background: #f5f5f5;
-  border: 1px solid #ddd;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.wallet-option-btn:hover {
+  background: rgba(255, 69, 0, 0.05);
+  border-color: rgba(255, 69, 0, 0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(255, 69, 0, 0.1);
 }
 
 .wallet-icon {
-  width: 24px;
-  height: 24px;
-  margin-right: 10px;
+  width: 32px;
+  height: 32px;
+  margin-right: 16px;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.wallet-icon-okx {
+  background: #fff;
+}
+
+.no-wallet-view {
+  text-align: center;
+  color: #ff4444;
+  padding: 20px;
+  background: rgba(255, 68, 68, 0.1);
+  border-radius: 12px;
+}
+
+.connected-view {
+  text-align: center;
+}
+
+.info-group {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 16px;
+  padding: 20px;
+  margin: 20px 0;
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .info-item {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
+  margin-bottom: 12px;
+  font-size: 0.95rem;
+}
+
+.info-item:last-child {
+  margin-bottom: 0;
+}
+
+.info-title {
+  color: #888;
+}
+
+.info-content {
+  color: #fff;
+  font-weight: 600;
+  font-family: monospace;
 }
 
 .disconnect-btn {
   width: 100%;
-  padding: 10px;
-  margin-top: 20px;
-  background: #ff4444;
+  padding: 14px;
+  background: linear-gradient(135deg, #ff4444, #cc0000);
   color: white;
   border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 15px rgba(255, 68, 68, 0.3);
+}
+
+.disconnect-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 68, 68, 0.5);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(30px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 </style>

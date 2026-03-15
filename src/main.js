@@ -13,7 +13,7 @@ if (APP_ENV === 'PROD' && DISABLE_CONSOLE_IN_PROD) {
   // Keep console.warn and console.error for important messages
 }
 
-// Log environment variables on startup (will only show in dev/test)
+// Log environment variables on startup (will only show in dev)
 console.log("Application starting with environment:", import.meta.env);
 
 
