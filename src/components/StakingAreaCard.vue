@@ -8,33 +8,46 @@
     </div>
     
     <!-- 数据看板 (极简数据条) -->
-    <div class="mini-dashboard">
-      <div class="stat-row">
+    <div class="mini-dashboard" :class="{ 'compact-dashboard': !SHOW_STAKING_ADVANCED_STATS }">
+      <template v-if="SHOW_STAKING_ADVANCED_STATS">
+        <div class="stat-row">
+          <div class="stat-item">
+            <span class="stat-label">{{ t('staking.mskePrice') }}</span>
+            <span class="stat-value">{{ tokenPrice }}<span class="unit">U</span></span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-label">{{ t('staking.poolDepth') }}</span>
+            <span class="stat-value">{{ reserveU }}<span class="unit">U</span></span>
+          </div>
+          <div class="stat-divider"></div>
+          <div class="stat-item">
+            <span class="stat-label">{{ t('staking.dumpTaxRate') }}</span>
+            <span class="stat-value highlight">{{ dumpTaxRate }}</span>
+          </div>
+        </div>
+        <div class="stat-row secondary-row">
+          <div class="stat-item">
+            <span class="stat-label">{{ t('staking.totalStaking') }}</span>
+            <span class="stat-value">{{ totalStaking }}<span class="unit">U</span></span>
+          </div>
+          <div class="stat-divider hidden"></div>
+          <div class="stat-item hidden-item">
+            <!-- Placeholder to maintain grid alignment -->
+          </div>
+          <div class="stat-divider hidden"></div>
+          <div class="stat-item">
+            <span class="stat-label">{{ t('staking.totalBurned') }}</span>
+            <span class="stat-value">{{ totalBurned }}<span class="unit">MSKE</span></span>
+          </div>
+        </div>
+      </template>
+      <div v-else class="stat-row compact-row">
         <div class="stat-item">
           <span class="stat-label">{{ t('staking.mskePrice') }}</span>
           <span class="stat-value">{{ tokenPrice }}<span class="unit">U</span></span>
         </div>
         <div class="stat-divider"></div>
-        <div class="stat-item">
-          <span class="stat-label">{{ t('staking.poolDepth') }}</span>
-          <span class="stat-value">{{ reserveU }}<span class="unit">U</span></span>
-        </div>
-        <div class="stat-divider"></div>
-        <div class="stat-item">
-          <span class="stat-label">{{ t('staking.dumpTaxRate') }}</span>
-          <span class="stat-value highlight">{{ dumpTaxRate }}</span>
-        </div>
-      </div>
-      <div class="stat-row secondary-row">
-        <div class="stat-item">
-          <span class="stat-label">{{ t('staking.totalStaking') }}</span>
-          <span class="stat-value">{{ totalStaking }}<span class="unit">U</span></span>
-        </div>
-        <div class="stat-divider hidden"></div>
-        <div class="stat-item hidden-item">
-          <!-- Placeholder to maintain grid alignment -->
-        </div>
-        <div class="stat-divider hidden"></div>
         <div class="stat-item">
           <span class="stat-label">{{ t('staking.totalBurned') }}</span>
           <span class="stat-value">{{ totalBurned }}<span class="unit">MSKE</span></span>
@@ -76,6 +89,7 @@ import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import { t } from '@/i18n/index.js';
+import { SHOW_STAKING_ADVANCED_STATS } from '@/services/environment';
 import erc20Abi from '@/abis/erc20.json';
 import stakingAbi from '@/abis/staking.json';
 import referralAbi from '@/abis/referral.json';
@@ -565,10 +579,18 @@ onMounted(async () => {
   box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.2);
 }
 
+.mini-dashboard.compact-dashboard {
+  padding: 12px 14px;
+}
+
 .stat-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.stat-row.compact-row {
+  min-height: 48px;
 }
 
 .stat-row.secondary-row {

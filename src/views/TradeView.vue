@@ -108,7 +108,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
-import { APP_ENV } from '@/services/environment';
+import { APP_ENV, ENABLE_BUY_TRADE } from '@/services/environment';
 import { showToast } from '@/services/notification';
 import { t } from '@/i18n/index.js';
 import erc20Abi from '@/abis/erc20.json';
@@ -120,8 +120,8 @@ const DEFAULT_SLIPPAGE_BY_DIRECTION = {
   sell: '35',
   buy: '5'
 };
-const PROD_DEXSCREENER_EMBED = `<style>#dexscreener-embed{position:relative;width:100%;padding-bottom:125%;}@media(min-width:1400px){#dexscreener-embed{padding-bottom:65%;}}#dexscreener-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style><div id="dexscreener-embed"><iframe src="https://dexscreener.com/bsc/0x7130d2a12b9bcbfAe4f2634d864a1ee1ce3ead9c?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartDefaultOnMobile=1&chartTheme=dark&theme=dark&chartStyle=0&chartType=usd&interval=15"></iframe></div>`;
-const DEV_DEXSCREENER_EMBED = `<style>#dexscreener-embed{position:relative;width:100%;padding-bottom:125%;}@media(min-width:1400px){#dexscreener-embed{padding-bottom:65%;}}#dexscreener-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style><div id="dexscreener-embed"><iframe src="https://dexscreener.com/bsc/0x7130d2a12b9bcbfAe4f2634d864a1ee1ce3ead9c?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartDefaultOnMobile=1&chartTheme=dark&theme=dark&chartStyle=0&chartType=usd&interval=15"></iframe></div>`;
+const PROD_DEXSCREENER_EMBED = `<style>#dexscreener-embed{position:relative;width:100%;padding-bottom:125%;}@media(min-width:1400px){#dexscreener-embed{padding-bottom:65%;}}#dexscreener-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style><div id="dexscreener-embed"><iframe src="https://dexscreener.com/bsc/0x9082b8E33785b035e5c1Cb328Bb6b56A6c886813?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartDefaultOnMobile=1&chartTheme=dark&theme=dark&chartStyle=0&chartType=usd&interval=15"></iframe></div>`;
+const DEV_DEXSCREENER_EMBED = `<style>#dexscreener-embed{position:relative;width:100%;padding-bottom:125%;}@media(min-width:1400px){#dexscreener-embed{padding-bottom:65%;}}#dexscreener-embed iframe{position:absolute;width:100%;height:100%;top:0;left:0;border:0;}</style><div id="dexscreener-embed"><iframe src="https://dexscreener.com/bsc/0x9082b8E33785b035e5c1Cb328Bb6b56A6c886813?embed=1&loadChartSettings=0&trades=0&tabs=0&info=0&chartLeftToolbar=0&chartDefaultOnMobile=1&chartTheme=dark&theme=dark&chartStyle=0&chartType=usd&interval=15"></iframe></div>`;
 
 const normalizeSlippageValue = (value, fallback) => {
   const digitsOnly = String(value || '').replace(/[^\d]/g, '');
@@ -175,7 +175,7 @@ const tokenDecimals = ref({
 const routerAddress = computed(() => getContractAddress('Router'));
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
-const showDexscreenerChart = computed(() => APP_ENV !== 'PROD');
+const showDexscreenerChart = computed(() => true);
 const dexscreenerEmbedHtml = computed(() => (APP_ENV === 'PROD' ? PROD_DEXSCREENER_EMBED : DEV_DEXSCREENER_EMBED));
 
 const inputSymbol = computed(() => (tradeDirection.value === 'buy' ? 'USDT' : 'MSKE'));
@@ -224,6 +224,7 @@ const displayMinimumOut = computed(() => minimumOutText.value);
 const displayPriceImpact = computed(() => priceImpactText.value);
 const canUseMax = computed(() => walletState.isConnected && isSwapConfigured.value && balanceRaw.value > 0n);
 const isHighPriceImpact = computed(() => (priceImpactValue.value ?? 0) >= HIGH_IMPACT_THRESHOLD);
+const isBuyTradeEnabled = computed(() => tradeDirection.value !== 'buy' || ENABLE_BUY_TRADE);
 
 const priceImpactClass = computed(() => {
   if (priceImpactValue.value === null) return '';
@@ -233,6 +234,7 @@ const priceImpactClass = computed(() => {
 });
 
 const swapDisabled = computed(() => {
+  if (!isBuyTradeEnabled.value) return true;
   if (isExecuting.value || isQuoting.value) return true;
   if (!walletState.isConnected || !walletState.address) return true;
   if (!isSwapConfigured.value) return true;
@@ -248,6 +250,7 @@ const requiresApproval = computed(() => {
 });
 
 const actionButtonText = computed(() => {
+  if (!isBuyTradeEnabled.value) return t('trade.action.notOpenYet');
   if (isExecuting.value) return '交易提交中...';
   if (isQuoting.value) return '报价计算中...';
   if (inputAmount.value && !inputAmountRaw.value) return '输入金额无效';
@@ -632,6 +635,10 @@ const executeSwap = async (skipImpactConfirm = false) => {
 };
 
 const handleActionClick = async () => {
+  if (!isBuyTradeEnabled.value) {
+    return;
+  }
+
   if (requiresApproval.value) {
     await executeApprove();
     return;
