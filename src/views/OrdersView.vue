@@ -74,7 +74,7 @@
           </div>
 
             <div class="order-actions" v-if="activeStatus === 0">
-              <button class="action-btn" :disabled="actionLoading" @click="handleHarvest(record)">
+              <button class="action-btn" :disabled="actionLoading || !isOrderHarvestEnabled" @click="handleHarvest(record)">
                 {{ actionLoading && pendingHarvestRecord === record.key ? actionStatusText : t('orders.action.harvest') }}
               </button>
               <button class="action-btn danger" :disabled="actionLoading" @click="openUnstakeConfirm(record)">
@@ -122,6 +122,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
+import { ENABLE_ORDER_HARVEST } from '@/services/environment';
 import { showToast } from '@/services/notification';
 import { t } from '@/i18n/index.js';
 import stakingAbi from '@/abis/staking.json';
@@ -177,6 +178,7 @@ const recordDisplayValueMap = new Map();
 const recordAnimationFrameMap = new Map();
 
 const stakingAddress = computed(() => getContractAddress('Staking'));
+const isOrderHarvestEnabled = ENABLE_ORDER_HARVEST;
 const routerAddress = computed(() => getContractAddress('Router'));
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
@@ -653,6 +655,10 @@ async function nextPage() {
 }
 
 async function handleHarvest(record) {
+  if (!isOrderHarvestEnabled) {
+    return;
+  }
+
   if (!walletState.isConnected || !walletState.address) {
     showToast(t('toast.orders.connectWallet'), 'warning');
     return;

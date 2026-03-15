@@ -42,7 +42,7 @@
       <!-- 内容 -->
       <div class="hero-content">
         <h1 class="hero-title">MSKE</h1>
-        <p class="hero-subtitle">Bitcoin Stamps inscription token</p>
+        <p class="hero-subtitle">Your exclusive wealth-making token</p>
         <p class="hero-subtitle-cn">{{ t('home.heroSubtitleSecondary') }}</p>
       </div>
     </section>

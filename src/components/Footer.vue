@@ -5,7 +5,7 @@
         <div class="footer-top">
           <div class="footer-brand">
             <img src="/asset/images/logo/MSKE-logo-all.png" alt="MSKE Logo" class="footer-logo" />
-            <p class="brand-tagline">Bitcoin Stamps | SRC-20</p>
+            <p class="brand-tagline">Mainnet + SC + Key + EVM = MSKE 2.0</p>
           </div>
 
           <div class="social-links" aria-label="Social links">

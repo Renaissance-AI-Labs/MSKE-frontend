@@ -108,7 +108,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
-import { APP_ENV } from '@/services/environment';
+import { APP_ENV, ENABLE_BUY_TRADE } from '@/services/environment';
 import { showToast } from '@/services/notification';
 import { t } from '@/i18n/index.js';
 import erc20Abi from '@/abis/erc20.json';
@@ -224,6 +224,7 @@ const displayMinimumOut = computed(() => minimumOutText.value);
 const displayPriceImpact = computed(() => priceImpactText.value);
 const canUseMax = computed(() => walletState.isConnected && isSwapConfigured.value && balanceRaw.value > 0n);
 const isHighPriceImpact = computed(() => (priceImpactValue.value ?? 0) >= HIGH_IMPACT_THRESHOLD);
+const isBuyTradeEnabled = computed(() => tradeDirection.value !== 'buy' || ENABLE_BUY_TRADE);
 
 const priceImpactClass = computed(() => {
   if (priceImpactValue.value === null) return '';
@@ -233,6 +234,7 @@ const priceImpactClass = computed(() => {
 });
 
 const swapDisabled = computed(() => {
+  if (!isBuyTradeEnabled.value) return true;
   if (isExecuting.value || isQuoting.value) return true;
   if (!walletState.isConnected || !walletState.address) return true;
   if (!isSwapConfigured.value) return true;
@@ -248,6 +250,7 @@ const requiresApproval = computed(() => {
 });
 
 const actionButtonText = computed(() => {
+  if (!isBuyTradeEnabled.value) return t('trade.action.notOpenYet');
   if (isExecuting.value) return '交易提交中...';
   if (isQuoting.value) return '报价计算中...';
   if (inputAmount.value && !inputAmountRaw.value) return '输入金额无效';
@@ -632,6 +635,10 @@ const executeSwap = async (skipImpactConfirm = false) => {
 };
 
 const handleActionClick = async () => {
+  if (!isBuyTradeEnabled.value) {
+    return;
+  }
+
   if (requiresApproval.value) {
     await executeApprove();
     return;
