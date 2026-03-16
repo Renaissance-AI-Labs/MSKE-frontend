@@ -423,7 +423,7 @@ function normalizeRecord(record, fallbackIndex) {
     displayIndex: recordIndex + 1,
     rewardDays,
     stakeDays,
-    amountText: formatAmount(BigInt(record.amount || 0n), stakingDecimals.value),
+    amountText: formatAmount(BigInt(record.lpUAmount || 0n), stakingDecimals.value),
     dailyRewardRateText: formatRatePercent(rewardRateRaw),
     unstakeRateText: formatRatePercent(unstakeRateRaw, true),
     stakeTimeText: formatStakeTime(record.stakeTime),
