@@ -50,6 +50,7 @@
     <!-- 2. 中间：质押区域、绑定按钮、资讯按钮 (占位) -->
     <section class="middle-section">
       <StakingAreaCard />
+      <ShareholderAreaCard />
       <DividendAreaCard />
     </section>
 
@@ -62,6 +63,7 @@ import { useRouter } from 'vue-router';
 import { walletState } from '@/services/wallet';
 import { t } from '@/i18n/index.js';
 import StakingAreaCard from '@/components/StakingAreaCard.vue';
+import ShareholderAreaCard from '@/components/ShareholderAreaCard.vue';
 import DividendAreaCard from '@/components/DividendAreaCard.vue';
 
 const router = useRouter();
