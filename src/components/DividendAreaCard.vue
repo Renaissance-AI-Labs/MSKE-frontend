@@ -112,6 +112,7 @@ async function refreshCardData() {
 
     usdtDecimals.value = Number(decimalsRaw);
     pendingRewardsRaw.value = pendingRaw;
+    console.log('联创分红待领取分红:', ethers.formatUnits(pendingRaw, Number(decimalsRaw)), 'USDT');
   } catch (error) {
     console.error('Failed to fetch dividend data:', error);
     pendingRewardsRaw.value = 0n;
