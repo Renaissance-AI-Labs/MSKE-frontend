@@ -196,6 +196,13 @@
                     <span v-if="currentFriend.teamPerformance !== PLACEHOLDER" class="unit">U</span>
                   </span>
                 </div>
+                <div class="stat-box stat-box-wide">
+                  <span class="stat-label">{{ t('friends.nbTeamSuccess') }}</span>
+                  <span class="stat-value highlight">
+                    {{ currentFriend.nbTeamPerformance || PLACEHOLDER }}
+                    <span v-if="(currentFriend.nbTeamPerformance || PLACEHOLDER) !== PLACEHOLDER" class="unit">U</span>
+                  </span>
+                </div>
               </div>
             </div>
             <div class="empty-state compact" v-else>
@@ -260,6 +267,14 @@ import { showToast } from '@/services/notification';
 import referralAbi from '@/abis/referral.json';
 import stakingAbi from '@/abis/staking.json';
 import { t } from '@/i18n/index.js';
+
+const NB_READ_ABI = [
+  'function NBManager() view returns (address)'
+];
+
+const NBMANAGER_READ_ABI = [
+  'function getTeamPerformance(address) view returns (uint256)'
+];
 
 const route = useRoute();
 const activeTab = ref('recommendations');
@@ -380,6 +395,27 @@ const getStakingReadContract = async () => {
   }
   const provider = new ethers.BrowserProvider(window.ethereum);
   return new ethers.Contract(contractAddress, stakingAbi, provider);
+};
+
+const getNbManagerReadContract = async () => {
+  const contractAddress = getContractAddress('NB');
+  if (!ethers.isAddress(contractAddress || '') || !window.ethereum) {
+    return null;
+  }
+
+  const provider = new ethers.BrowserProvider(window.ethereum);
+
+  try {
+    const nbContract = new ethers.Contract(contractAddress, NB_READ_ABI, provider);
+    const managerAddress = await nbContract.NBManager();
+    if (!ethers.isAddress(managerAddress || '') || managerAddress === ethers.ZeroAddress) {
+      return null;
+    }
+
+    return new ethers.Contract(managerAddress, NBMANAGER_READ_ABI, provider);
+  } catch {
+    return null;
+  }
 };
 
 const getWriteContract = async () => {
@@ -635,6 +671,7 @@ const loadFriendsData = async () => {
     myStats.value.friendsCount = referralCountRaw.toString();
 
     const stakingContract = await getStakingReadContract();
+    const nbManagerContract = await getNbManagerReadContract();
     if (stakingContract) {
       try {
         const starLevelRaw = await stakingContract.userStarLevel(walletState.address);
@@ -696,12 +733,18 @@ const loadFriendsData = async () => {
 
     let teamInvestResults = [];
     let friendStakeResults = [];
+    let nbTeamPerformanceResults = [];
     if (stakingContract) {
       teamInvestResults = await Promise.allSettled(
         uniqueChildren.map((address) => stakingContract.teamTotalInvestValue(address))
       );
       friendStakeResults = await Promise.allSettled(
         uniqueChildren.map((address) => stakingContract.balances(address))
+      );
+    }
+    if (nbManagerContract) {
+      nbTeamPerformanceResults = await Promise.allSettled(
+        uniqueChildren.map((address) => nbManagerContract.getTeamPerformance(address))
       );
     }
 
@@ -716,11 +759,17 @@ const loadFriendsData = async () => {
         friendStake = formatAmount(friendStakeResults[index].value, 18, 2);
       }
 
+      let nbTeamPerformance = PLACEHOLDER;
+      if (nbTeamPerformanceResults[index] && nbTeamPerformanceResults[index].status === 'fulfilled') {
+        nbTeamPerformance = formatAmount(nbTeamPerformanceResults[index].value, 18, 2);
+      }
+
       return {
         address,
         friendStake,
         teamCount: teamCountResults[index].status === 'fulfilled' ? teamCountResults[index].value.toString() : PLACEHOLDER,
-        teamPerformance
+        teamPerformance,
+        nbTeamPerformance
       };
     });
 
@@ -1354,6 +1403,14 @@ onBeforeUnmount(() => {
 
 .stat-box + .stat-box {
   border-left: 1px solid rgba(255, 188, 150, 0.1);
+}
+
+.stat-box.stat-box-wide {
+  grid-column: 1 / -1;
+  border-left: none;
+  border-top: 1px solid rgba(255, 188, 150, 0.1);
+  margin-top: 6px;
+  padding-top: 10px;
 }
 
 .carousel-controls {
