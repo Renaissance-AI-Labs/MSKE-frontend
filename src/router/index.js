@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue';
 import OrdersView from '../views/OrdersView.vue';
 import TradeView from '../views/TradeView.vue';
 import FriendsView from '../views/FriendsView.vue';
+import InvestNBView from '../views/InvestNBView.vue';
 import NotFoundView from '../views/NotFoundView.vue';
 import { walletState } from '../services/wallet';
 
@@ -26,6 +27,11 @@ const routes = [
     path: '/friends',
     name: 'Friends',
     component: FriendsView,
+  },
+  {
+    path: '/invest-nb',
+    name: 'InvestNB',
+    component: InvestNBView,
   },
   {
     path: '/:pathMatch(.*)*',

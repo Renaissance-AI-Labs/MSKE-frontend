@@ -111,7 +111,7 @@
               </div>
               <div class="stat-divider"></div>
               <div class="stat-item">
-                <span class="stat-label">{{ t('friends.directInvest') }}</span>
+                <span class="stat-label">{{ t('friends.friendResults') }}</span>
                 <span class="stat-value highlight">
                   {{ myStats.directInvest }}
                   <span v-if="myStats.directInvest !== PLACEHOLDER" class="unit">U</span>
@@ -131,7 +131,7 @@
               </div>
               <div class="stat-divider"></div>
               <div class="stat-item">
-                <span class="stat-label">{{ t('friends.teamPerformance') }}</span>
+                <span class="stat-label">{{ t('friends.teamSuccess') }}</span>
                 <span class="stat-value highlight">
                   {{ myStats.teamPerformance }}
                   <span v-if="myStats.teamPerformance !== PLACEHOLDER" class="unit">U</span>
@@ -190,7 +190,7 @@
                   </span>
                 </div>
                 <div class="stat-box">
-                  <span class="stat-label">{{ t('friends.teamPerformance') }}</span>
+                  <span class="stat-label">{{ t('friends.teamSuccess') }}</span>
                   <span class="stat-value highlight">
                     {{ currentFriend.teamPerformance }}
                     <span v-if="currentFriend.teamPerformance !== PLACEHOLDER" class="unit">U</span>
