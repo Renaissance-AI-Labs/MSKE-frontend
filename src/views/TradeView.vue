@@ -10,7 +10,7 @@
     <section class="trade-panel">
       <div class="panel-decor"></div>
       <div v-if="showDexscreenerChart" class="chart-frame" v-html="dexscreenerEmbedHtml"></div>
-      <div class="mode-tabs">
+      <div ref="modeTabsRef" class="mode-tabs">
         <button class="mode-btn" :class="{ active: tradeDirection === 'sell' }" @click="setTradeDirection('sell')">
           卖出
         </button>
@@ -25,10 +25,32 @@
           <button class="max-btn" :disabled="!canUseMax" @click="handleSetMax">MAX</button>
         </div>
         <div class="token-input-wrap">
-          <div class="token-chip" :class="{ logo: Boolean(inputTokenLogo) }">
-            <img v-if="inputTokenLogo" class="token-logo" :src="inputTokenLogo" :alt="inputSymbol" />
+          <div class="token-selector" v-if="tradeDirection === 'sell'" @click="toggleTokenSelector">
+            <div class="token-chip" :class="{ logo: Boolean(inputTokenLogo) }">
+              <img
+                v-if="inputTokenLogo"
+                class="token-logo"
+                :class="{ 'token-logo--nb': inputSymbol === 'NB' }"
+                :src="inputTokenLogo"
+                :alt="inputSymbol"
+              />
+              <span v-else>{{ inputSymbol }}</span>
+            </div>
+            <svg class="dropdown-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+          <div v-else class="token-chip" :class="{ logo: Boolean(inputTokenLogo) }">
+            <img
+              v-if="inputTokenLogo"
+              class="token-logo"
+              :class="{ 'token-logo--nb': inputSymbol === 'NB' }"
+              :src="inputTokenLogo"
+              :alt="inputSymbol"
+            />
             <span v-else>{{ inputSymbol }}</span>
           </div>
+          
           <input
             v-model="inputAmount"
             class="token-input"
@@ -47,6 +69,10 @@
           <div class="summary-row">
             <span>预计到手</span>
             <span>{{ displayEstimatedOut }} {{ outputSymbol }}</span>
+          </div>
+          <div v-if="isNbSellMode" class="summary-row">
+            <span>剩余额度</span>
+            <span>{{ displayNbRemainingQuota }} USDT</span>
           </div>
           <div class="summary-row">
             <span>最低接收</span>
@@ -87,6 +113,30 @@
     </section>
 
     <transition name="modal">
+      <div v-if="isTokenSelectorVisible" class="modal-mask" @click.self="closeTokenSelector">
+        <div class="modal-container token-selector-modal">
+          <h3 class="modal-title">选择代币</h3>
+          <div class="token-list">
+            <div class="token-list-item" @click="selectSellToken('MSKE')" :class="{ active: sellToken === 'MSKE' }">
+              <img src="/asset/images/logo/Logo-coin.png" class="token-list-logo" alt="MSKE" />
+              <div class="token-list-info">
+                <span class="token-list-symbol">MSKE</span>
+                <span class="token-list-name">MSKE Token</span>
+              </div>
+            </div>
+            <div class="token-list-item" @click="selectSellToken('NB')" :class="{ active: sellToken === 'NB' }">
+              <img src="/asset/images/logo/nb_coin.png" class="token-list-logo token-list-logo--nb" alt="NB" />
+              <div class="token-list-info">
+                <span class="token-list-symbol">NB</span>
+                <span class="token-list-name">NB Token</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </transition>
+
+    <transition name="modal">
       <div v-if="isImpactConfirmVisible" class="modal-mask" @click.self="closeImpactConfirm">
         <div class="modal-container">
           <h3 class="modal-title">高价格影响提醒</h3>
@@ -100,11 +150,13 @@
         </div>
       </div>
     </transition>
+
   </div>
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import { ethers } from 'ethers';
 import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
@@ -113,6 +165,8 @@ import { showToast } from '@/services/notification';
 import { t } from '@/i18n/index.js';
 import erc20Abi from '@/abis/erc20.json';
 import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
+import nbAbi from '@/abis/NB.json';
+import nbMskeLpAbi from '@/abis/NB_MSKE_LP.json';
 
 const SLIPPAGE_STORAGE_KEY = 'mske.trade.slippage.byDirection.v1';
 const MAX_SLIPPAGE_PERCENT = 99;
@@ -148,7 +202,11 @@ const loadSlippageCache = () => {
 };
 
 const tradeDirection = ref('sell');
+const sellToken = ref('MSKE');
+const isTokenSelectorVisible = ref(false);
 const inputAmount = ref('');
+const modeTabsRef = ref(null);
+const route = useRoute();
 const slippageCache = ref(loadSlippageCache());
 const slippage = ref(slippageCache.value.sell);
 const balanceText = ref('--');
@@ -165,29 +223,50 @@ const quoteAmountOutRaw = ref(0n);
 const quoteRequestId = ref(0);
 let quoteTimer = null;
 const HIGH_IMPACT_THRESHOLD = 5;
-const MAX_RESERVE_BPS = 10;
+const BALANCE_RESERVE_BPS = 10;
+const NB_PAIR_MAX_SELL_BPS = 1000;
+const TRADE_TABS_SCROLL_OFFSET = 8;
 
 const tokenDecimals = ref({
   USDT: 18,
-  MSKE: 18
+  MSKE: 18,
+  NB: 18
 });
 
 const routerAddress = computed(() => getContractAddress('Router'));
 const usdtAddress = computed(() => getContractAddress('USDT'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
+const nbAddress = computed(() => getContractAddress('NB'));
+const nbMskeLpAddress = computed(() => getContractAddress('NB_MSKE_LP'));
 const showDexscreenerChart = computed(() => true);
 const dexscreenerEmbedHtml = computed(() => (APP_ENV === 'PROD' ? PROD_DEXSCREENER_EMBED : DEV_DEXSCREENER_EMBED));
 
-const inputSymbol = computed(() => (tradeDirection.value === 'buy' ? 'USDT' : 'MSKE'));
-const outputSymbol = computed(() => (tradeDirection.value === 'buy' ? 'MSKE' : 'USDT'));
+const inputSymbol = computed(() => {
+  if (tradeDirection.value === 'buy') return 'USDT';
+  return sellToken.value;
+});
+const outputSymbol = computed(() => {
+  if (tradeDirection.value === 'buy') return 'MSKE'; // Buy always outputs MSKE
+  return 'USDT'; // Sell always outputs USDT
+});
 const inputTokenLogo = computed(() => {
   if (inputSymbol.value === 'MSKE') return '/asset/images/logo/Logo-coin.png';
+  if (inputSymbol.value === 'NB') return '/asset/images/logo/nb_coin.png';
   if (inputSymbol.value === 'USDT') return '/asset/images/logo/usdt-coin.png';
   return '';
 });
 
-const inputTokenAddress = computed(() => (tradeDirection.value === 'buy' ? usdtAddress.value : mskeAddress.value));
-const outputTokenAddress = computed(() => (tradeDirection.value === 'buy' ? mskeAddress.value : usdtAddress.value));
+const inputTokenAddress = computed(() => {
+  if (tradeDirection.value === 'buy') return usdtAddress.value;
+  if (sellToken.value === 'NB') return nbAddress.value;
+  return mskeAddress.value;
+});
+const outputTokenAddress = computed(() => {
+  if (tradeDirection.value === 'buy') return mskeAddress.value;
+  return usdtAddress.value;
+});
+const isNbSellMode = computed(() => tradeDirection.value === 'sell' && sellToken.value === 'NB');
+const currentSlippageCacheKey = computed(() => tradeDirection.value);
 
 const normalizedSlippage = computed(() => {
   const value = Number.parseInt(slippage.value, 10);
@@ -206,6 +285,13 @@ const inputAmountRaw = computed(() => {
 });
 
 const isSwapConfigured = computed(() => {
+  if (isNbSellMode.value) {
+    return ethers.isAddress(routerAddress.value || '')
+      && ethers.isAddress(usdtAddress.value || '')
+      && ethers.isAddress(mskeAddress.value || '')
+      && ethers.isAddress(nbAddress.value || '')
+      && ethers.isAddress(nbMskeLpAddress.value || '');
+  }
   return ethers.isAddress(routerAddress.value || '')
     && ethers.isAddress(usdtAddress.value || '')
     && ethers.isAddress(mskeAddress.value || '');
@@ -215,6 +301,8 @@ const configurationHint = computed(() => {
   if (!ethers.isAddress(routerAddress.value || '')) return 'Router 地址未配置，请先在 contracts.js 中完善。';
   if (!ethers.isAddress(usdtAddress.value || '')) return 'USDT 地址未配置，请先在 contracts.js 中完善。';
   if (!ethers.isAddress(mskeAddress.value || '')) return 'MSKE 地址未配置，请先在 contracts.js 中完善。';
+  if (isNbSellMode.value && !ethers.isAddress(nbAddress.value || '')) return 'NB 地址未配置，请先在 contracts.js 中完善。';
+  if (isNbSellMode.value && !ethers.isAddress(nbMskeLpAddress.value || '')) return 'NB/MSKE LP 地址未配置，请先在 contracts.js 中完善。';
   return '';
 });
 
@@ -222,16 +310,36 @@ const displayBalance = computed(() => balanceText.value);
 const displayEstimatedOut = computed(() => estimatedOutText.value);
 const displayMinimumOut = computed(() => minimumOutText.value);
 const displayPriceImpact = computed(() => priceImpactText.value);
-const canUseMax = computed(() => walletState.isConnected && isSwapConfigured.value && balanceRaw.value > 0n);
 const isHighPriceImpact = computed(() => (priceImpactValue.value ?? 0) >= HIGH_IMPACT_THRESHOLD);
 const isBuyTradeEnabled = computed(() => tradeDirection.value !== 'buy' || ENABLE_BUY_TRADE);
 
+// NB Sell Specific State
+const nbRemainingQuotaRaw = ref(0n);
+const nbLastBuyTime = ref(0);
+const nbColdTime = ref(60);
+const nbMaxSellRaw = ref(0n);
+
+const isNbCoolingDown = computed(() => {
+  if (!isNbSellMode.value) return false;
+  const now = Math.floor(Date.now() / 1000);
+  return now < (nbLastBuyTime.value + nbColdTime.value);
+});
+const hasNbSellQuota = computed(() => !isNbSellMode.value || nbRemainingQuotaRaw.value > 0n);
+const exceedsNbSellQuota = computed(() => isNbSellMode.value && quoteAmountOutRaw.value > nbRemainingQuotaRaw.value);
+const exceedsNbPairLimit = computed(() => {
+  if (!isNbSellMode.value || !inputAmountRaw.value) return false;
+  if (nbMaxSellRaw.value <= 0n) return false;
+  return inputAmountRaw.value > nbMaxSellRaw.value;
+});
+
 const priceImpactClass = computed(() => {
-  if (priceImpactValue.value === null) return '';
+  if (priceImpactValue.value === null || priceImpactText.value === '--') return '';
   if (priceImpactValue.value >= 5) return 'impact-high';
   if (priceImpactValue.value >= 1) return 'impact-medium';
   return 'impact-low';
 });
+const displayNbRemainingQuota = computed(() => formatTokenAmount(nbRemainingQuotaRaw.value, tokenDecimals.value.USDT ?? 18, 2));
+const canUseMax = computed(() => walletState.isConnected && isSwapConfigured.value && getSafeMaxAmountRaw() > 0n);
 
 const swapDisabled = computed(() => {
   if (!isBuyTradeEnabled.value) return true;
@@ -240,6 +348,10 @@ const swapDisabled = computed(() => {
   if (!isSwapConfigured.value) return true;
   if (!inputAmountRaw.value || inputAmountRaw.value <= 0n) return true;
   if (inputAmountRaw.value > balanceRaw.value) return true;
+  if (isNbCoolingDown.value) return true;
+  if (!hasNbSellQuota.value) return true;
+  if (exceedsNbPairLimit.value) return true;
+  if (exceedsNbSellQuota.value) return true;
   return false;
 });
 
@@ -253,8 +365,12 @@ const actionButtonText = computed(() => {
   if (!isBuyTradeEnabled.value) return t('trade.action.notOpenYet');
   if (isExecuting.value) return '交易提交中...';
   if (isQuoting.value) return '报价计算中...';
+  if (isNbCoolingDown.value) return '冷却中，请稍后再卖';
+  if (isNbSellMode.value && !hasNbSellQuota.value) return '无卖出额度';
   if (inputAmount.value && !inputAmountRaw.value) return '输入金额无效';
   if (inputAmountRaw.value && inputAmountRaw.value > balanceRaw.value) return '余额不足';
+  if (exceedsNbPairLimit.value) return '超出单次最大卖出量';
+  if (exceedsNbSellQuota.value) return '超出剩余卖出额度';
   if (requiresApproval.value) {
     return `授权 ${inputSymbol.value}`;
   }
@@ -298,6 +414,15 @@ const limitDecimalPlaces = (value, maxDecimalPlaces) => {
 
 const getInputDecimals = () => tokenDecimals.value[inputSymbol.value] ?? 18;
 const getOutputDecimals = () => tokenDecimals.value[outputSymbol.value] ?? 18;
+const getSafeMaxAmountRaw = () => {
+  if (balanceRaw.value <= 0n) return 0n;
+  const reserve = balanceRaw.value * BigInt(BALANCE_RESERVE_BPS) / 10000n;
+  let safeMax = balanceRaw.value > reserve ? balanceRaw.value - reserve : balanceRaw.value;
+  if (isNbSellMode.value && nbMaxSellRaw.value > 0n && safeMax > nbMaxSellRaw.value) {
+    safeMax = nbMaxSellRaw.value;
+  }
+  return safeMax;
+};
 
 const clearQuote = () => {
   quoteAmountOutRaw.value = 0n;
@@ -315,8 +440,17 @@ const refreshTokenMeta = async () => {
   try {
     const usdtContract = getTokenContract(usdtAddress.value, provider);
     const mskeContract = getTokenContract(mskeAddress.value, provider);
-    const [usdtDecimals, mskeDecimals] = await Promise.all([usdtContract.decimals(), mskeContract.decimals()]);
-    tokenDecimals.value = { USDT: Number(usdtDecimals), MSKE: Number(mskeDecimals) };
+    const nbContract = ethers.isAddress(nbAddress.value || '') ? getTokenContract(nbAddress.value, provider) : null;
+    const [usdtDecimals, mskeDecimals, nbDecimals] = await Promise.all([
+      usdtContract.decimals(),
+      mskeContract.decimals(),
+      nbContract ? nbContract.decimals().catch(() => 18) : 18
+    ]);
+    tokenDecimals.value = {
+      USDT: Number(usdtDecimals),
+      MSKE: Number(mskeDecimals),
+      NB: Number(nbDecimals)
+    };
   } catch (error) {
     console.warn('[TradeView] Failed to refresh token metadata:', error);
   }
@@ -391,7 +525,14 @@ const refreshQuote = async () => {
       return;
     }
     const routerContract = getRouterContract(provider);
-    const path = [inputTokenAddress.value, outputTokenAddress.value];
+    
+    let path;
+    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
+      path = [nbAddress.value, mskeAddress.value, usdtAddress.value];
+    } else {
+      path = [inputTokenAddress.value, outputTokenAddress.value];
+    }
+    
     const amountsOut = await routerContract.getAmountsOut(amountInRaw, path);
     const outRaw = amountsOut[amountsOut.length - 1];
     if (requestId !== quoteRequestId.value) return;
@@ -402,24 +543,30 @@ const refreshQuote = async () => {
     estimatedOutText.value = formatTokenAmount(outRaw, getOutputDecimals());
     minimumOutText.value = formatTokenAmount(minOutRaw, getOutputDecimals());
 
-    const unitAmountRaw = 10n ** BigInt(getInputDecimals());
-    const unitAmountsOut = await routerContract.getAmountsOut(unitAmountRaw, path);
-    if (requestId !== quoteRequestId.value) return;
-    const unitOutRaw = unitAmountsOut[unitAmountsOut.length - 1];
-    if (unitOutRaw > 0n) {
-      const expectedOutBySpot = amountInRaw * unitOutRaw / unitAmountRaw;
-      if (expectedOutBySpot > 0n && outRaw <= expectedOutBySpot) {
-        const impactBps = Number((expectedOutBySpot - outRaw) * 10000n / expectedOutBySpot);
-        const impact = impactBps / 100;
-        priceImpactValue.value = impact;
-        priceImpactText.value = `${impact.toFixed(2)}%`;
-      } else {
-        priceImpactValue.value = 0;
-        priceImpactText.value = '0.00%';
-      }
-    } else {
-      priceImpactValue.value = null;
+    // Price impact calculation (simplified for sell_nb)
+    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
+      priceImpactValue.value = 0; // Or implement proper 2-hop price impact calculation
       priceImpactText.value = '--';
+    } else {
+      const unitAmountRaw = 10n ** BigInt(getInputDecimals());
+      const unitAmountsOut = await routerContract.getAmountsOut(unitAmountRaw, path);
+      if (requestId !== quoteRequestId.value) return;
+      const unitOutRaw = unitAmountsOut[unitAmountsOut.length - 1];
+      if (unitOutRaw > 0n) {
+        const expectedOutBySpot = amountInRaw * unitOutRaw / unitAmountRaw;
+        if (expectedOutBySpot > 0n && outRaw <= expectedOutBySpot) {
+          const impactBps = Number((expectedOutBySpot - outRaw) * 10000n / expectedOutBySpot);
+          const impact = impactBps / 100;
+          priceImpactValue.value = impact;
+          priceImpactText.value = `${impact.toFixed(2)}%`;
+        } else {
+          priceImpactValue.value = 0;
+          priceImpactText.value = '0.00%';
+        }
+      } else {
+        priceImpactValue.value = null;
+        priceImpactText.value = '--';
+      }
     }
   } catch (error) {
     if (requestId === quoteRequestId.value) {
@@ -473,6 +620,52 @@ const setTradeDirection = (direction) => {
   tradeDirection.value = direction;
 };
 
+const toggleTokenSelector = () => {
+  if (tradeDirection.value === 'sell') {
+    isTokenSelectorVisible.value = true;
+  }
+};
+
+const closeTokenSelector = () => {
+  isTokenSelectorVisible.value = false;
+};
+
+const selectSellToken = (token) => {
+  sellToken.value = token;
+  closeTokenSelector();
+  quoteRequestId.value += 1;
+  slippage.value = getCachedSlippage('sell');
+};
+
+const applyRoutePresetFromQuery = async () => {
+  const targetDirection = route.query.direction === 'buy' || route.query.direction === 'sell'
+    ? route.query.direction
+    : '';
+  const targetToken = route.query.token === 'NB' || route.query.token === 'MSKE'
+    ? route.query.token
+    : '';
+  const shouldScrollToTabs = route.query.focus === 'mode-tabs';
+
+  if (targetDirection && tradeDirection.value !== targetDirection) {
+    setTradeDirection(targetDirection);
+  }
+
+  if ((targetDirection === 'sell' || tradeDirection.value === 'sell') && targetToken && sellToken.value !== targetToken) {
+    selectSellToken(targetToken);
+  }
+
+  if (shouldScrollToTabs) {
+    await nextTick();
+    window.requestAnimationFrame(() => {
+      const tabsElement = modeTabsRef.value;
+      if (!tabsElement) return;
+      const tabsTop = tabsElement.getBoundingClientRect().top + window.scrollY;
+      const targetTop = Math.max(tabsTop - TRADE_TABS_SCROLL_OFFSET, 0);
+      window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    });
+  }
+};
+
 const onInputAmountChange = (event) => {
   inputAmount.value = limitDecimalPlaces(event.target.value, getInputDecimals());
 };
@@ -480,16 +673,15 @@ const onInputAmountChange = (event) => {
 const onSlippageChange = (event) => {
   const edited = String(event.target.value || '').replace(/[^\d]/g, '').slice(0, 2);
   if (edited === '') {
-    slippage.value = updateSlippageForDirection(tradeDirection.value, '0');
+    slippage.value = updateSlippageForDirection(currentSlippageCacheKey.value, '0');
     return;
   }
-  slippage.value = updateSlippageForDirection(tradeDirection.value, edited);
+  slippage.value = updateSlippageForDirection(currentSlippageCacheKey.value, edited);
 };
 
 const handleSetMax = () => {
   if (!canUseMax.value) return;
-  const reserve = balanceRaw.value * BigInt(MAX_RESERVE_BPS) / 10000n;
-  const safeMax = balanceRaw.value > reserve ? balanceRaw.value - reserve : balanceRaw.value;
+  const safeMax = getSafeMaxAmountRaw();
   inputAmount.value = limitDecimalPlaces(ethers.formatUnits(safeMax, getInputDecimals()), getInputDecimals());
 };
 
@@ -565,6 +757,10 @@ const executeSwap = async (skipImpactConfirm = false) => {
     showToast(t('toast.trade.insufficientBalance'), 'warning');
     return;
   }
+  if (isNbSellMode.value && nbMaxSellRaw.value > 0n && amountInRaw > nbMaxSellRaw.value) {
+    showToast('单次卖出不能超过池子 NB 储备的 10%', 'warning');
+    return;
+  }
   if (requiresApproval.value) {
     showToast(t('toast.trade.approveFirst'), 'warning');
     return;
@@ -572,6 +768,17 @@ const executeSwap = async (skipImpactConfirm = false) => {
 
   try {
     isExecuting.value = true;
+    if (isNbSellMode.value) {
+      await refreshNbData();
+      if (nbMaxSellRaw.value > 0n && amountInRaw > nbMaxSellRaw.value) {
+        showToast('单次卖出不能超过池子 NB 储备的 10%', 'warning');
+        return;
+      }
+      if (!hasNbSellQuota.value) {
+        showToast('当前无卖出额度，请先通过直推解锁', 'warning');
+        return;
+      }
+    }
     await refreshBalance();
     if (amountInRaw > balanceRaw.value) {
       showToast(t('toast.trade.insufficientBalance'), 'warning');
@@ -580,7 +787,11 @@ const executeSwap = async (skipImpactConfirm = false) => {
 
     await refreshQuote();
     if (quoteAmountOutRaw.value <= 0n) throw new Error('INVALID_QUOTE');
-    if (!skipImpactConfirm && isHighPriceImpact.value) {
+    if (isNbSellMode.value && exceedsNbSellQuota.value) {
+      showToast('超出剩余卖出额度', 'warning');
+      return;
+    }
+    if (!skipImpactConfirm && isHighPriceImpact.value && !(tradeDirection.value === 'sell' && sellToken.value === 'NB')) {
       isImpactConfirmVisible.value = true;
       return;
     }
@@ -592,7 +803,14 @@ const executeSwap = async (skipImpactConfirm = false) => {
     const slippageBps = Math.round(normalizedSlippage.value * 100);
     const minOutRaw = quoteAmountOutRaw.value * BigInt(10000 - slippageBps) / 10000n;
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
-    const path = [inputTokenAddress.value, outputTokenAddress.value];
+    
+    let path;
+    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
+      path = [nbAddress.value, mskeAddress.value, usdtAddress.value];
+    } else {
+      path = [inputTokenAddress.value, outputTokenAddress.value];
+    }
+
     console.log('[Contract Call] swapExactTokensForTokensSupportingFeeOnTransferTokens params:', {
       tradeDirection: tradeDirection.value,
       inputSymbol: inputSymbol.value,
@@ -619,6 +837,9 @@ const executeSwap = async (skipImpactConfirm = false) => {
     inputAmount.value = '';
     clearQuote();
     await refreshBalance();
+    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
+      await refreshNbData();
+    }
   } catch (error) {
     if (error?.code === 4001 || error?.code === 'ACTION_REJECTED') {
       showToast(t('toast.trade.swapCancelled'), 'warning');
@@ -651,26 +872,88 @@ const confirmImpactAndSwap = async () => {
   await executeSwap(true);
 };
 
+const refreshNbData = async () => {
+  if (!walletState.isConnected || !walletState.address || !nbAddress.value) {
+    nbRemainingQuotaRaw.value = 0n;
+    nbLastBuyTime.value = 0;
+    nbColdTime.value = 60;
+    nbMaxSellRaw.value = 0n;
+    return;
+  }
+  try {
+    const provider = getProvider();
+    if (!provider) return;
+    const nbContract = new ethers.Contract(nbAddress.value, nbAbi, provider);
+    const [remQuota, lastBuy, cTime] = await Promise.all([
+      nbContract.remainingSellQuotaU(walletState.address).catch(() => 0n),
+      nbContract.lastBuyTime(walletState.address).catch(() => 0),
+      nbContract.coldTime().catch(() => 60)
+    ]);
+
+    let pairLimit = 0n;
+    if (ethers.isAddress(nbMskeLpAddress.value || '')) {
+      const pairContract = new ethers.Contract(nbMskeLpAddress.value, nbMskeLpAbi, provider);
+      const [pairToken0, pairToken1, reserves] = await Promise.all([
+        pairContract.token0().catch(() => ''),
+        pairContract.token1().catch(() => ''),
+        pairContract.getReserves().catch(() => [0n, 0n, 0])
+      ]);
+
+      const reserve0 = reserves?.[0] ?? 0n;
+      const reserve1 = reserves?.[1] ?? 0n;
+      const lowerNbAddress = String(nbAddress.value).toLowerCase();
+      let nbReserve = 0n;
+
+      if (String(pairToken0).toLowerCase() === lowerNbAddress) {
+        nbReserve = reserve0;
+      } else if (String(pairToken1).toLowerCase() === lowerNbAddress) {
+        nbReserve = reserve1;
+      }
+
+      pairLimit = nbReserve * BigInt(NB_PAIR_MAX_SELL_BPS) / 10000n;
+    }
+
+    nbRemainingQuotaRaw.value = remQuota;
+    nbLastBuyTime.value = Number(lastBuy);
+    nbColdTime.value = Number(cTime);
+    nbMaxSellRaw.value = pairLimit;
+  } catch (error) {
+    console.warn('[TradeView] Failed to refresh NB data:', error);
+  }
+};
+
 watch(
-  () => [walletState.address, walletState.isConnected, tradeDirection.value],
+  () => [walletState.address, walletState.isConnected, tradeDirection.value, sellToken.value],
   async () => {
     await refreshBalance();
     await refreshAllowance();
+    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
+      await refreshNbData();
+    }
     scheduleQuoteRefresh();
   }
 );
 
 watch(
-  () => [inputAmount.value, slippage.value, tradeDirection.value],
+  () => [inputAmount.value, slippage.value, tradeDirection.value, sellToken.value],
   () => {
     scheduleQuoteRefresh();
   }
 );
 
+watch(
+  () => [route.query.direction, route.query.token, route.query.focus],
+  () => {
+    applyRoutePresetFromQuery();
+  }
+);
+
 onMounted(async () => {
+  await applyRoutePresetFromQuery();
   await refreshTokenMeta();
   await refreshBalance();
   await refreshAllowance();
+  await refreshNbData();
   await refreshQuote();
 });
 
@@ -884,6 +1167,10 @@ onBeforeUnmount(() => {
   border-radius: 50%;
 }
 
+.token-logo--nb {
+  transform: scale(0.9);
+}
+
 .token-input {
   width: 100%;
   border: none;
@@ -987,6 +1274,10 @@ onBeforeUnmount(() => {
   color: #ffb38d;
 }
 
+.hint-line + .hint-line {
+  margin-top: 6px;
+}
+
 .confirm-btn {
   width: 100%;
   margin-top: 10px;
@@ -1079,6 +1370,94 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.token-selector {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 8px 4px 4px;
+  border-radius: 999px;
+  background: rgba(255, 69, 0, 0.1);
+  border: 1px solid rgba(255, 120, 70, 0.3);
+  margin-right: 8px;
+  transition: all 0.2s ease;
+}
+
+.token-selector:hover {
+  background: rgba(255, 69, 0, 0.2);
+  border-color: rgba(255, 120, 70, 0.5);
+}
+
+.token-selector .token-chip {
+  margin-right: 4px;
+  border: none;
+  background: transparent;
+}
+
+.dropdown-icon {
+  width: 16px;
+  height: 16px;
+  color: #ffd8bc;
+}
+
+.token-selector-modal {
+  max-width: 320px;
+}
+
+.token-list {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.token-list-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.token-list-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.token-list-item.active {
+  background: rgba(255, 69, 0, 0.15);
+  border-color: rgba(255, 69, 0, 0.4);
+}
+
+.token-list-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  margin-right: 12px;
+  object-fit: cover;
+}
+
+.token-list-logo--nb {
+  transform: scale(0.8);
+}
+
+.token-list-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.token-list-symbol {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+.token-list-name {
+  font-size: 0.8rem;
+  color: #a0a0a0;
 }
 
 .modal-btn.primary {
