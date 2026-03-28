@@ -10,16 +10,16 @@
     <div class="cards-container">
       <section class="content-panel">
         <div class="panel-decor"></div>
-        <h2 class="panel-title">参与投资</h2>
+        <h2 class="panel-title">{{ t('investNB.panel.invest') }}</h2>
 
         <div v-if="hasInvested" class="invested-card">
-          <p class="invested-text">当前地址已参与NB投资</p>
+          <p class="invested-text">{{ t('investNB.investedText') }}</p>
         </div>
 
         <template v-else>
           <div class="input-card">
             <div class="input-head">
-              <span class="field-label">投资金额 (USDT)</span>
+              <span class="field-label">{{ t('investNB.field.amount') }}</span>
             </div>
 
             <div class="token-input-wrap">
@@ -31,7 +31,7 @@
                 class="token-input"
                 type="text"
                 inputmode="decimal"
-                :placeholder="`范围 ${minInvestAmountText} - ${maxInvestAmountText}`"
+                :placeholder="t('investNB.inputPlaceholder', { min: minInvestAmountText, max: maxInvestAmountText })"
                 :disabled="hasInvested"
                 @input="onInvestAmountChange"
               />
@@ -39,18 +39,18 @@
 
             <div class="details-block">
               <div class="summary-row">
-                <span>USDT 余额</span>
+                <span>{{ t('investNB.balance.usdt') }}</span>
                 <span>{{ usdtBalanceText }} USDT</span>
               </div>
               <div v-if="!hasBoundReferral" class="summary-row">
-                <span>推荐人</span>
+                <span>{{ t('investNB.referrer') }}</span>
                 <span class="text-warning">{{ referralStatusText }}</span>
               </div>
             </div>
           </div>
 
           <p v-if="!hasBoundReferral" class="hint-line warning">
-            请先通过邀请链接在好友页面绑定推荐人
+            {{ t('investNB.referral.bindHint') }}
           </p>
 
           <button class="confirm-btn" :disabled="investDisabled" @click="handleInvestClick">
@@ -61,55 +61,56 @@
 
       <section class="content-panel data-panel">
         <div class="panel-decor"></div>
-        <h2 class="panel-title">我的数据</h2>
+        <h2 class="panel-title">{{ t('investNB.panel.data') }}</h2>
 
         <div class="data-grid">
           <div class="data-item">
-            <span class="data-label">NB 余额</span>
+            <span class="data-label">{{ t('investNB.data.nbBalance') }}</span>
             <span class="data-value">{{ nbBalanceText }}</span>
+            <span class="data-subvalue">≈ {{ nbBalanceUsdtText }} USDT</span>
           </div>
           <div class="data-item">
-            <span class="data-label">当前等级</span>
+            <span class="data-label">{{ t('investNB.data.nbLevel') }}</span>
             <span class="data-value highlight">{{ currentLevelText }}</span>
           </div>
           <div class="data-item">
-            <span class="data-label">好友成果</span>
+            <span class="data-label">{{ t('investNB.data.nbFriendResults') }}</span>
             <span class="data-value">{{ directPerfText }} USDT</span>
           </div>
           <div class="data-item">
-            <span class="data-label">组队成果</span>
+            <span class="data-label">{{ t('investNB.data.nbTeamResults') }}</span>
             <span class="data-value">{{ teamPerfText }} USDT</span>
           </div>
         </div>
 
         <div class="quota-section">
           <div class="quota-row">
-            <span class="quota-title">卖出额度</span>
-            <span class="quota-value">已用 {{ usedQuotaText }} USDT / 共 {{ totalQuotaText }} USDT</span>
+            <span class="quota-title">{{ t('investNB.quota.title') }}</span>
+            <span class="quota-value">{{ t('investNB.quota.summary', { used: usedQuotaText, total: totalQuotaText }) }}</span>
           </div>
           <div class="quota-progress-track">
             <div class="quota-progress-fill" :style="{ width: `${quotaProgress}%` }"></div>
           </div>
-          <button class="confirm-btn quota-action-btn" @click="handleGoToSellNb">卖出NB</button>
+          <button class="confirm-btn quota-action-btn" @click="handleGoToSellNb">{{ t('investNB.action.sellNb') }}</button>
         </div>
       </section>
 
       <section class="content-panel dividend-panel">
         <div class="panel-decor"></div>
-        <h2 class="panel-title s6-title">S6 分红池</h2>
+        <h2 class="panel-title s6-title">{{ t('investNB.panel.s6') }}</h2>
 
         <div class="dividend-status-row">
-          <span class="status-label">当前状态</span>
+          <span class="status-label">{{ t('investNB.status.current') }}</span>
           <span class="status-badge" :class="s6StatusClass">{{ s6StatusText }}</span>
         </div>
 
         <div class="dividend-stats">
           <div class="stat-box">
-            <span class="stat-label">待领取分红</span>
+            <span class="stat-label">{{ t('investNB.s6.pendingReward') }}</span>
             <span class="stat-value highlight">{{ s6PendingText }} USDT</span>
           </div>
           <div class="stat-box">
-            <span class="stat-label">已领取分红</span>
+            <span class="stat-label">{{ t('investNB.s6.harvestedReward') }}</span>
             <span class="stat-value">{{ s6HarvestedText }} USDT</span>
           </div>
         </div>
@@ -124,7 +125,7 @@
           :disabled="!canRegisterS6"
           @click="handleRegisterS6"
         >
-          {{ isRegisteringS6 ? '激活中...' : '激活 S6' }}
+          {{ isRegisteringS6 ? t('investNB.s6.action.activating') : t('investNB.s6.action.activate') }}
         </button>
         <button
           v-else-if="isS6Registered"
@@ -132,7 +133,7 @@
           :disabled="!canHarvestS6"
           @click="handleHarvestS6"
         >
-          {{ isHarvestingS6 ? '领取中...' : '领取分红' }}
+          {{ isHarvestingS6 ? t('investNB.s6.action.harvesting') : t('investNB.s6.action.harvest') }}
         </button>
       </section>
     </div>
@@ -148,6 +149,7 @@ import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import nbAbi from '@/abis/NB.json';
+import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
 
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -182,6 +184,8 @@ let refreshTimer = null;
 const router = useRouter();
 
 const usdtAddress = computed(() => getContractAddress('USDT'));
+const routerAddress = computed(() => getContractAddress('Router'));
+const mskeAddress = computed(() => getContractAddress('MSKE'));
 const nbAddress = computed(() => getContractAddress('NB'));
 const referralAddress = computed(() => getContractAddress('Referral'));
 const nbManagerAddress = ref('');
@@ -189,6 +193,7 @@ const nbManagerAddress = ref('');
 const hasBoundReferral = ref(false);
 const usdtBalanceRaw = ref(0n);
 const nbBalanceRaw = ref(0n);
+const nbBalanceUsdtRaw = ref(0n);
 const investAmount = ref('');
 const minInvestRaw = ref(ethers.parseUnits('100', 18));
 const maxInvestRaw = ref(ethers.parseUnits('3000', 18));
@@ -232,6 +237,10 @@ const limitDecimalPlaces = (value, maxDecimalPlaces) => {
 
 const usdtBalanceText = computed(() => formatU(usdtBalanceRaw.value));
 const nbBalanceText = computed(() => formatNB(nbBalanceRaw.value));
+const nbBalanceUsdtText = computed(() => {
+  if (nbBalanceUsdtRaw.value === null) return '--';
+  return formatU(nbBalanceUsdtRaw.value);
+});
 const minInvestAmountText = computed(() => formatU(minInvestRaw.value));
 const maxInvestAmountText = computed(() => formatU(maxInvestRaw.value));
 const directPerfText = computed(() => formatU(directPerfRaw.value));
@@ -243,9 +252,9 @@ const quotaProgress = computed(() => {
   const progressBps = Number((usedQuotaRaw.value * 10000n) / totalQuotaRaw.value);
   return Math.min(Math.max(progressBps / 100, 0), 100);
 });
-const referralStatusText = computed(() => '未绑定');
+const referralStatusText = computed(() => t('investNB.referral.unbound'));
 const currentLevelText = computed(() => {
-  if (currentLevel.value <= 0) return '无';
+  if (currentLevel.value <= 0) return t('investNB.level.none');
   return `S${currentLevel.value}`;
 });
 
@@ -254,10 +263,10 @@ const s6PendingText = computed(() => formatU(s6PendingRaw.value));
 const s6HarvestedText = computed(() => formatU(s6HarvestedRaw.value));
 const showS6RegisterButton = computed(() => currentLevel.value === 6 && !isS6Registered.value);
 const s6StatusText = computed(() => {
-  if (!isS6Eligible.value) return '未达到 S6';
-  if (showS6RegisterButton.value) return '待激活';
-  if (s6PendingRaw.value > 0n) return '可领取';
-  return '已激活';
+  if (!isS6Eligible.value) return t('investNB.s6.status.notReached');
+  if (showS6RegisterButton.value) return t('investNB.s6.status.pendingActivation');
+  if (s6PendingRaw.value > 0n) return t('investNB.s6.status.claimable');
+  return t('investNB.s6.status.activated');
 });
 const s6StatusClass = computed(() => {
   if (!isS6Eligible.value) return 'is-locked';
@@ -267,12 +276,20 @@ const s6StatusClass = computed(() => {
 });
 const s6HintText = computed(() => {
   if (!isS6Eligible.value) return '';
-  if (showS6RegisterButton.value) return '达到 S6 后若未自动注册，可先手动激活，再领取分红。';
+  if (showS6RegisterButton.value) return t('investNB.s6.hint.activate');
   if (s6PendingRaw.value > 0n) return '';
-  return '已激活 S6 分红资格，当前暂无可领取分红。';
+  return t('investNB.s6.hint.empty');
 });
 const canRegisterS6 = computed(() => walletState.isConnected && showS6RegisterButton.value && !isRegisteringS6.value);
 const canHarvestS6 = computed(() => walletState.isConnected && isS6Registered.value && s6PendingRaw.value > 0n && !isHarvestingS6.value);
+const canQuoteNbUsdt = computed(() => (
+  ethers.isAddress(routerAddress.value || '')
+  && ethers.isAddress(nbAddress.value || '')
+  && ethers.isAddress(mskeAddress.value || '')
+  && ethers.isAddress(usdtAddress.value || '')
+));
+
+let nbBalanceQuoteRequestId = 0;
 
 const investAmountRaw = computed(() => {
   if (!investAmount.value || Number(investAmount.value) <= 0) return 0n;
@@ -295,17 +312,23 @@ const investDisabled = computed(() => {
 });
 
 const investButtonText = computed(() => {
-  if (!walletState.isConnected) return '请先连接钱包';
-  if (isDataLoading.value) return '数据加载中...';
-  if (hasInvested.value) return '已参与投资';
-  if (!hasBoundReferral.value) return '请先绑定推荐人';
-  if (isInvesting.value) return usdtAllowanceRaw.value < investAmountRaw.value ? '授权中...' : '投资中...';
-  if (investAmount.value && investAmountRaw.value === 0n) return '输入金额无效';
-  if (investAmountRaw.value > 0n && investAmountRaw.value < minInvestRaw.value) return `最低投资 ${minInvestAmountText.value} USDT`;
-  if (investAmountRaw.value > maxInvestRaw.value) return `最高投资 ${maxInvestAmountText.value} USDT`;
-  if (investAmountRaw.value > usdtBalanceRaw.value) return 'USDT 余额不足';
-  if (investAmountRaw.value > 0n && usdtAllowanceRaw.value < investAmountRaw.value) return '授权 USDT';
-  return '参与投资';
+  if (!walletState.isConnected) return t('investNB.action.connectWallet');
+  if (isDataLoading.value) return t('investNB.action.loadingData');
+  if (hasInvested.value) return t('investNB.action.alreadyInvested');
+  if (!hasBoundReferral.value) return t('investNB.action.bindReferrerFirst');
+  if (isInvesting.value) return usdtAllowanceRaw.value < investAmountRaw.value
+    ? t('investNB.action.approving')
+    : t('investNB.action.investing');
+  if (investAmount.value && investAmountRaw.value === 0n) return t('investNB.action.invalidAmount');
+  if (investAmountRaw.value > 0n && investAmountRaw.value < minInvestRaw.value) {
+    return t('investNB.action.minInvest', { amount: minInvestAmountText.value });
+  }
+  if (investAmountRaw.value > maxInvestRaw.value) {
+    return t('investNB.action.maxInvest', { amount: maxInvestAmountText.value });
+  }
+  if (investAmountRaw.value > usdtBalanceRaw.value) return t('investNB.action.insufficientUsdt');
+  if (investAmountRaw.value > 0n && usdtAllowanceRaw.value < investAmountRaw.value) return t('investNB.action.approveUsdt');
+  return t('investNB.action.invest');
 });
 
 const getProvider = () => {
@@ -314,10 +337,42 @@ const getProvider = () => {
   return null;
 };
 
+const refreshNbBalanceUsdtQuote = async (provider, nbAmountRaw) => {
+  const requestId = ++nbBalanceQuoteRequestId;
+
+  if (nbAmountRaw <= 0n) {
+    nbBalanceUsdtRaw.value = 0n;
+    return;
+  }
+
+  if (!provider || !canQuoteNbUsdt.value) {
+    nbBalanceUsdtRaw.value = null;
+    return;
+  }
+
+  try {
+    const routerContract = new ethers.Contract(routerAddress.value, pancakeRouterV2Abi, provider);
+    const amountsOut = await routerContract.getAmountsOut(nbAmountRaw, [
+      nbAddress.value,
+      mskeAddress.value,
+      usdtAddress.value
+    ]);
+
+    if (requestId !== nbBalanceQuoteRequestId) return;
+    nbBalanceUsdtRaw.value = amountsOut[amountsOut.length - 1] ?? 0n;
+  } catch (error) {
+    if (requestId === nbBalanceQuoteRequestId) {
+      nbBalanceUsdtRaw.value = null;
+    }
+  }
+};
+
 const resetUserData = () => {
+  nbBalanceQuoteRequestId += 1;
   hasBoundReferral.value = false;
   usdtBalanceRaw.value = 0n;
   nbBalanceRaw.value = 0n;
+  nbBalanceUsdtRaw.value = 0n;
   hasInvested.value = false;
   usdtAllowanceRaw.value = 0n;
   directPerfRaw.value = 0n;
@@ -411,6 +466,7 @@ const loadData = async () => {
 
     usdtBalanceRaw.value = uBal;
     nbBalanceRaw.value = nBal;
+    await refreshNbBalanceUsdtQuote(provider, nBal);
     usdtAllowanceRaw.value = uAllow;
     hasBoundReferral.value = isBound;
     minInvestRaw.value = minInv;
@@ -443,23 +499,23 @@ const handleInvestClick = async () => {
     if (usdtAllowanceRaw.value < investAmountRaw.value) {
       const usdtContract = new ethers.Contract(usdtAddress.value, ERC20_ABI, signer);
       const tx = await usdtContract.approve(nbManagerAddress.value, ethers.MaxUint256);
-      showToast('授权交易已提交', 'info');
+      showToast(t('toast.investNB.approveSubmitted'), 'info');
       await tx.wait();
-      showToast('授权成功', 'success');
+      showToast(t('toast.investNB.approveSuccess'), 'success');
       usdtAllowanceRaw.value = ethers.MaxUint256;
       return;
     }
 
     const nbManager = new ethers.Contract(nbManagerAddress.value, NBMANAGER_ABI, signer);
     const tx = await nbManager.invest(investAmountRaw.value, 0, 0);
-    showToast('投资交易已提交', 'info');
+    showToast(t('toast.investNB.investSubmitted'), 'info');
     await tx.wait();
-    showToast('投资成功', 'success');
+    showToast(t('toast.investNB.investSuccess'), 'success');
     investAmount.value = '';
     await loadData();
   } catch (error) {
     console.error(error);
-    showToast('操作失败，请重试', 'error');
+    showToast(t('toast.investNB.actionFailed'), 'error');
   } finally {
     isInvesting.value = false;
   }
@@ -474,13 +530,13 @@ const handleRegisterS6 = async () => {
     isRegisteringS6.value = true;
     const nbManager = new ethers.Contract(nbManagerAddress.value, NBMANAGER_ABI, signer);
     const tx = await nbManager.registerS6(walletState.address);
-    showToast('S6 激活交易已提交', 'info');
+    showToast(t('toast.investNB.s6ActivateSubmitted'), 'info');
     await tx.wait();
-    showToast('S6 激活成功', 'success');
+    showToast(t('toast.investNB.s6ActivateSuccess'), 'success');
     await loadData();
   } catch (error) {
     console.error(error);
-    showToast('S6 激活失败，请重试', 'error');
+    showToast(t('toast.investNB.s6ActivateFailed'), 'error');
   } finally {
     isRegisteringS6.value = false;
   }
@@ -495,13 +551,13 @@ const handleHarvestS6 = async () => {
     isHarvestingS6.value = true;
     const nbManager = new ethers.Contract(nbManagerAddress.value, NBMANAGER_ABI, signer);
     const tx = await nbManager.s6Harvest();
-    showToast('领取交易已提交', 'info');
+    showToast(t('toast.investNB.s6HarvestSubmitted'), 'info');
     await tx.wait();
-    showToast('领取成功', 'success');
+    showToast(t('toast.investNB.s6HarvestSuccess'), 'success');
     await loadData();
   } catch (error) {
     console.error(error);
-    showToast('领取失败，请重试', 'error');
+    showToast(t('toast.investNB.s6HarvestFailed'), 'error');
   } finally {
     isHarvestingS6.value = false;
   }
@@ -604,6 +660,19 @@ onBeforeUnmount(() => {
   color: #ffd2a4;
   margin: 0 0 16px 0;
   text-align: center;
+}
+
+.data-panel {
+  padding: 12px;
+}
+
+.data-panel .panel-decor {
+  margin: -12px -12px 12px;
+}
+
+.data-panel .panel-title {
+  margin-bottom: 12px;
+  font-size: 1.02rem;
 }
 
 .s6-title {
@@ -732,15 +801,15 @@ onBeforeUnmount(() => {
 .data-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .data-item {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 99, 50, 0.15);
-  border-radius: 10px;
-  padding: 12px;
+  border-radius: 9px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -749,14 +818,22 @@ onBeforeUnmount(() => {
 
 .data-label {
   color: #bba392;
-  font-size: 0.75rem;
-  margin-bottom: 6px;
+  font-size: 0.7rem;
+  margin-bottom: 4px;
 }
 
 .data-value {
   color: #fff;
-  font-size: 1.05rem;
+  font-size: 0.92rem;
   font-weight: 700;
+  line-height: 1.15;
+}
+
+.data-subvalue {
+  margin-top: 2px;
+  color: #bba392;
+  font-size: 0.7rem;
+  line-height: 1.1;
 }
 
 .highlight {
@@ -780,33 +857,33 @@ onBeforeUnmount(() => {
 .quota-section {
   background: rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 99, 50, 0.15);
-  border-radius: 10px;
-  padding: 14px;
+  border-radius: 9px;
+  padding: 10px 12px;
 }
 
 .quota-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .quota-title {
   color: #dec5b1;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
 }
 
 .quota-value {
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   color: #ffcda5;
   text-align: right;
 }
 
 .quota-progress-track {
-  margin-top: 10px;
+  margin-top: 8px;
   width: 100%;
-  height: 8px;
+  height: 6px;
   border-radius: 999px;
   overflow: hidden;
   background: rgba(255, 255, 255, 0.08);
@@ -820,7 +897,9 @@ onBeforeUnmount(() => {
 }
 
 .quota-action-btn {
-  margin-top: 12px;
+  margin-top: 8px;
+  min-height: 38px;
+  font-size: 0.88rem;
 }
 
 .dividend-status-row {
