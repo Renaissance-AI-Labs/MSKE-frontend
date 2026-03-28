@@ -46,6 +46,12 @@ const navItems = computed(() => [
     path: '/friends',
     label: t('nav.friends'),
     icon: `<svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="9" r="3" stroke="currentColor" stroke-width="1.8"/><circle cx="16.5" cy="10.5" r="2.5" stroke="currentColor" stroke-width="1.8"/><path d="M3.5 19a5.5 5.5 0 0 1 11 0M13 19a3.8 3.8 0 0 1 7.5 0" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>`
+  },
+  {
+    name: 'InvestNB',
+    path: '/invest-nb',
+    label: t('nav.investNB'),
+    icon: `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>`
   }
 ]);
 
@@ -80,7 +86,7 @@ onBeforeUnmount(() => {
   width: min(560px, calc(100% - 24px));
   padding: 10px 12px;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 8px;
   border-radius: 18px;
   background: rgba(15, 10, 8, 0.86);
