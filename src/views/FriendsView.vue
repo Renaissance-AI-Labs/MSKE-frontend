@@ -196,11 +196,20 @@
                     <span v-if="currentFriend.teamPerformance !== PLACEHOLDER" class="unit">U</span>
                   </span>
                 </div>
-                <div class="stat-box stat-box-wide">
+              </div>
+              <div class="friend-stats-grid friend-stats-grid-bottom">
+                <div class="stat-box stat-box-bottom">
+                  <span class="stat-label">{{ t('friends.nbTeamPerformance') }}</span>
+                  <span class="stat-value highlight">
+                    {{ currentFriend.nbReferralPerformance }}
+                    <span v-if="currentFriend.nbReferralPerformance !== PLACEHOLDER" class="unit">U</span>
+                  </span>
+                </div>
+                <div class="stat-box stat-box-bottom">
                   <span class="stat-label">{{ t('friends.nbTeamSuccess') }}</span>
                   <span class="stat-value highlight">
-                    {{ currentFriend.nbTeamPerformance || PLACEHOLDER }}
-                    <span v-if="(currentFriend.nbTeamPerformance || PLACEHOLDER) !== PLACEHOLDER" class="unit">U</span>
+                    {{ currentFriend.nbTeamPerformance }}
+                    <span v-if="currentFriend.nbTeamPerformance !== PLACEHOLDER" class="unit">U</span>
                   </span>
                 </div>
               </div>
@@ -266,15 +275,8 @@ import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import referralAbi from '@/abis/referral.json';
 import stakingAbi from '@/abis/staking.json';
+import nbManagerAbi from '@/abis/NBManager.json';
 import { t } from '@/i18n/index.js';
-
-const NB_READ_ABI = [
-  'function NBManager() view returns (address)'
-];
-
-const NBMANAGER_READ_ABI = [
-  'function getTeamPerformance(address) view returns (uint256)'
-];
 
 const route = useRoute();
 const activeTab = ref('recommendations');
@@ -398,24 +400,13 @@ const getStakingReadContract = async () => {
 };
 
 const getNbManagerReadContract = async () => {
-  const contractAddress = getContractAddress('NB');
+  const contractAddress = getContractAddress('NBManager');
   if (!ethers.isAddress(contractAddress || '') || !window.ethereum) {
     return null;
   }
 
   const provider = new ethers.BrowserProvider(window.ethereum);
-
-  try {
-    const nbContract = new ethers.Contract(contractAddress, NB_READ_ABI, provider);
-    const managerAddress = await nbContract.NBManager();
-    if (!ethers.isAddress(managerAddress || '') || managerAddress === ethers.ZeroAddress) {
-      return null;
-    }
-
-    return new ethers.Contract(managerAddress, NBMANAGER_READ_ABI, provider);
-  } catch {
-    return null;
-  }
+  return new ethers.Contract(contractAddress, nbManagerAbi, provider);
 };
 
 const getWriteContract = async () => {
@@ -733,6 +724,7 @@ const loadFriendsData = async () => {
 
     let teamInvestResults = [];
     let friendStakeResults = [];
+    let nbReferralPerformanceResults = [];
     let nbTeamPerformanceResults = [];
     if (stakingContract) {
       teamInvestResults = await Promise.allSettled(
@@ -743,6 +735,9 @@ const loadFriendsData = async () => {
       );
     }
     if (nbManagerContract) {
+      nbReferralPerformanceResults = await Promise.allSettled(
+        uniqueChildren.map((address) => nbManagerContract.referralTotalInvestValue(address))
+      );
       nbTeamPerformanceResults = await Promise.allSettled(
         uniqueChildren.map((address) => nbManagerContract.getTeamPerformance(address))
       );
@@ -764,11 +759,17 @@ const loadFriendsData = async () => {
         nbTeamPerformance = formatAmount(nbTeamPerformanceResults[index].value, 18, 2);
       }
 
+      let nbReferralPerformance = PLACEHOLDER;
+      if (nbReferralPerformanceResults[index] && nbReferralPerformanceResults[index].status === 'fulfilled') {
+        nbReferralPerformance = formatAmount(nbReferralPerformanceResults[index].value, 18, 2);
+      }
+
       return {
         address,
         friendStake,
         teamCount: teamCountResults[index].status === 'fulfilled' ? teamCountResults[index].value.toString() : PLACEHOLDER,
         teamPerformance,
+        nbReferralPerformance,
         nbTeamPerformance
       };
     });
@@ -1388,6 +1389,12 @@ onBeforeUnmount(() => {
   margin-top: 7px;
 }
 
+.friend-stats-grid-bottom {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 6px;
+  border-top: 1px solid rgba(255, 188, 150, 0.1);
+}
+
 .stat-box {
   border: none;
   border-radius: 0;
@@ -1403,6 +1410,10 @@ onBeforeUnmount(() => {
 
 .stat-box + .stat-box {
   border-left: 1px solid rgba(255, 188, 150, 0.1);
+}
+
+.stat-box.stat-box-bottom {
+  padding-top: 10px;
 }
 
 .stat-box.stat-box-wide {
