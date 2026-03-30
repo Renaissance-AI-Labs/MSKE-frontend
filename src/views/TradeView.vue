@@ -3,8 +3,8 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <h1 class="page-title">闪兑</h1>
-      <p class="page-subtitle">快捷买卖与一键 Swap</p>
+      <h1 class="page-title">{{ t('trade.title') }}</h1>
+      <p class="page-subtitle">{{ t('trade.subtitle') }}</p>
     </section>
 
     <section class="trade-panel">
@@ -12,16 +12,16 @@
       <div v-if="showDexscreenerChart" class="chart-frame" v-html="dexscreenerEmbedHtml"></div>
       <div ref="modeTabsRef" class="mode-tabs">
         <button class="mode-btn" :class="{ active: tradeDirection === 'sell' }" @click="setTradeDirection('sell')">
-          卖出
+          {{ t('trade.tab.sell') }}
         </button>
         <button class="mode-btn" :class="{ active: tradeDirection === 'buy' }" @click="setTradeDirection('buy')">
-          买入
+          {{ t('trade.tab.buy') }}
         </button>
       </div>
 
       <div class="input-card">
         <div class="input-head">
-          <span class="field-label">输入 ({{ inputSymbol }})</span>
+          <span class="field-label">{{ t('trade.field.input', { symbol: inputSymbol }) }}</span>
           <button class="max-btn" :disabled="!canUseMax" @click="handleSetMax">MAX</button>
         </div>
         <div class="token-input-wrap">
@@ -63,7 +63,7 @@
 
         <div v-if="tradeDirection === 'buy'" class="buy-target-card">
           <div class="buy-target-head">
-            <span class="field-label">获取</span>
+            <span class="field-label">{{ t('trade.buyTarget.label') }}</span>
           </div>
           <div class="buy-target-options">
             <button
@@ -95,27 +95,27 @@
 
         <div class="details-block">
           <div class="summary-row">
-            <span>余额</span>
+            <span>{{ t('trade.summary.balance') }}</span>
             <span>{{ displayBalance }} {{ inputSymbol }}</span>
           </div>
           <div class="summary-row">
-            <span>预计到手</span>
+            <span>{{ t('trade.summary.estimatedOut') }}</span>
             <span>{{ displayEstimatedOut }} {{ outputSymbol }}</span>
           </div>
           <div v-if="isNbSellMode" class="summary-row">
-            <span>剩余额度</span>
+            <span>{{ t('trade.summary.remainingQuota') }}</span>
             <span>{{ displayNbRemainingQuota }} USDT</span>
           </div>
           <div class="summary-row">
-            <span>最低接收</span>
+            <span>{{ t('trade.summary.minimumOut') }}</span>
             <span>{{ displayMinimumOut }} {{ outputSymbol }}</span>
           </div>
           <div class="summary-row">
-            <span>价格影响</span>
+            <span>{{ t('trade.summary.priceImpact') }}</span>
             <span :class="priceImpactClass">{{ displayPriceImpact }}</span>
           </div>
           <div class="summary-row settings-row">
-            <span>滑点</span>
+            <span>{{ t('trade.summary.slippage') }}</span>
             <div class="slippage-input-wrap">
               <input
                 v-model="slippage"
@@ -137,7 +137,7 @@
       </div>
 
       <p v-if="configurationHint" class="hint-line warning">{{ configurationHint }}</p>
-      <p v-else-if="!walletState.isConnected" class="hint-line">请先连接钱包后再进行交易。</p>
+      <p v-else-if="!walletState.isConnected" class="hint-line">{{ t('trade.hint.connectWallet') }}</p>
 
       <button class="confirm-btn" :disabled="swapDisabled" @click="handleActionClick">
         {{ actionButtonText }}
@@ -147,20 +147,20 @@
     <transition name="modal">
       <div v-if="isTokenSelectorVisible" class="modal-mask" @click.self="closeTokenSelector">
         <div class="modal-container token-selector-modal">
-          <h3 class="modal-title">选择代币</h3>
+          <h3 class="modal-title">{{ t('trade.modal.selectTokenTitle') }}</h3>
           <div class="token-list">
             <div class="token-list-item" @click="selectSellToken('MSKE')" :class="{ active: sellToken === 'MSKE' }">
               <img src="/asset/images/logo/Logo-coin.png" class="token-list-logo" alt="MSKE" />
               <div class="token-list-info">
                 <span class="token-list-symbol">MSKE</span>
-                <span class="token-list-name">MSKE Token</span>
+                <span class="token-list-name">{{ t('trade.token.mskeName') }}</span>
               </div>
             </div>
             <div class="token-list-item" @click="selectSellToken('NB')" :class="{ active: sellToken === 'NB' }">
               <img src="/asset/images/logo/nb_coin.png" class="token-list-logo token-list-logo--nb" alt="NB" />
               <div class="token-list-info">
                 <span class="token-list-symbol">NB</span>
-                <span class="token-list-name">NB Token</span>
+                <span class="token-list-name">{{ t('trade.token.nbName') }}</span>
               </div>
             </div>
           </div>
@@ -171,13 +171,13 @@
     <transition name="modal">
       <div v-if="isImpactConfirmVisible" class="modal-mask" @click.self="closeImpactConfirm">
         <div class="modal-container">
-          <h3 class="modal-title">高价格影响提醒</h3>
+          <h3 class="modal-title">{{ t('trade.modal.highImpactTitle') }}</h3>
           <p class="modal-desc">
-            当前价格影响约为 <strong>{{ displayPriceImpact }}</strong>，继续交易可能导致较大滑点损耗。
+            {{ t('trade.modal.highImpactPrefix') }}<strong>{{ displayPriceImpact }}</strong>{{ t('trade.modal.highImpactSuffix') }}
           </p>
           <div class="modal-actions">
-            <button class="modal-btn" @click="closeImpactConfirm">取消</button>
-            <button class="modal-btn primary" @click="confirmImpactAndSwap">继续交易</button>
+            <button class="modal-btn" @click="closeImpactConfirm">{{ t('trade.modal.cancel') }}</button>
+            <button class="modal-btn primary" @click="confirmImpactAndSwap">{{ t('trade.modal.continue') }}</button>
           </div>
         </div>
       </div>
@@ -350,11 +350,11 @@ const isSwapConfigured = computed(() => {
 });
 
 const configurationHint = computed(() => {
-  if (!ethers.isAddress(routerAddress.value || '')) return 'Router 地址未配置，请先在 contracts.js 中完善。';
-  if (!ethers.isAddress(usdtAddress.value || '')) return 'USDT 地址未配置，请先在 contracts.js 中完善。';
-  if (!ethers.isAddress(mskeAddress.value || '')) return 'MSKE 地址未配置，请先在 contracts.js 中完善。';
-  if ((isNbSellMode.value || isBuyNbMode.value) && !ethers.isAddress(nbAddress.value || '')) return 'NB 地址未配置，请先在 contracts.js 中完善。';
-  if (isNbSellMode.value && !ethers.isAddress(nbMskeLpAddress.value || '')) return 'NB/MSKE LP 地址未配置，请先在 contracts.js 中完善。';
+  if (!ethers.isAddress(routerAddress.value || '')) return t('trade.config.routerMissing');
+  if (!ethers.isAddress(usdtAddress.value || '')) return t('trade.config.usdtMissing');
+  if (!ethers.isAddress(mskeAddress.value || '')) return t('trade.config.mskeMissing');
+  if ((isNbSellMode.value || isBuyNbMode.value) && !ethers.isAddress(nbAddress.value || '')) return t('trade.config.nbMissing');
+  if (isNbSellMode.value && !ethers.isAddress(nbMskeLpAddress.value || '')) return t('trade.config.nbLpMissing');
   return '';
 });
 
@@ -415,18 +415,18 @@ const requiresApproval = computed(() => {
 
 const actionButtonText = computed(() => {
   if (!isBuyTradeEnabled.value) return t('trade.action.notOpenYet');
-  if (isExecuting.value) return '交易提交中...';
-  if (isQuoting.value) return '报价计算中...';
-  if (isNbCoolingDown.value) return '冷却中，请稍后再卖';
-  if (isNbSellMode.value && !hasNbSellQuota.value) return '无卖出额度';
-  if (inputAmount.value && !inputAmountRaw.value) return '输入金额无效';
-  if (inputAmountRaw.value && inputAmountRaw.value > balanceRaw.value) return '余额不足';
-  if (exceedsNbPairLimit.value) return '超出单次最大卖出量';
-  if (exceedsNbSellQuota.value) return '超出剩余卖出额度';
+  if (isExecuting.value) return t('trade.action.submitting');
+  if (isQuoting.value) return t('trade.action.quoting');
+  if (isNbCoolingDown.value) return t('trade.action.coolingDown');
+  if (isNbSellMode.value && !hasNbSellQuota.value) return t('trade.action.noSellQuota');
+  if (inputAmount.value && !inputAmountRaw.value) return t('trade.action.invalidAmount');
+  if (inputAmountRaw.value && inputAmountRaw.value > balanceRaw.value) return t('trade.action.insufficientBalance');
+  if (exceedsNbPairLimit.value) return t('trade.action.exceedsPairLimit');
+  if (exceedsNbSellQuota.value) return t('trade.action.exceedsQuota');
   if (requiresApproval.value) {
-    return `授权 ${inputSymbol.value}`;
+    return t('trade.action.approveToken', { symbol: inputSymbol.value });
   }
-  return '确认交易';
+  return t('trade.action.confirmTrade');
 });
 
 const getProvider = () => {
@@ -815,7 +815,7 @@ const executeSwap = async (skipImpactConfirm = false) => {
     return;
   }
   if (isNbSellMode.value && nbMaxSellRaw.value > 0n && amountInRaw > nbMaxSellRaw.value) {
-    showToast('单次卖出不能超过池子 NB 储备的 10%', 'warning');
+    showToast(t('toast.trade.nbPairLimit'), 'warning');
     return;
   }
   if (requiresApproval.value) {
@@ -828,11 +828,11 @@ const executeSwap = async (skipImpactConfirm = false) => {
     if (isNbSellMode.value) {
       await refreshNbData();
       if (nbMaxSellRaw.value > 0n && amountInRaw > nbMaxSellRaw.value) {
-        showToast('单次卖出不能超过池子 NB 储备的 10%', 'warning');
+        showToast(t('toast.trade.nbPairLimit'), 'warning');
         return;
       }
       if (!hasNbSellQuota.value) {
-        showToast('当前无卖出额度，请先通过直推解锁', 'warning');
+        showToast(t('toast.trade.nbQuotaUnlock'), 'warning');
         return;
       }
     }
@@ -845,7 +845,7 @@ const executeSwap = async (skipImpactConfirm = false) => {
     await refreshQuote();
     if (quoteAmountOutRaw.value <= 0n) throw new Error('INVALID_QUOTE');
     if (isNbSellMode.value && exceedsNbSellQuota.value) {
-      showToast('超出剩余卖出额度', 'warning');
+      showToast(t('toast.trade.nbQuotaExceeded'), 'warning');
       return;
     }
     if (!skipImpactConfirm && isHighPriceImpact.value && !(tradeDirection.value === 'sell' && sellToken.value === 'NB')) {
