@@ -13,7 +13,7 @@
         <h2 class="panel-title">{{ t('investNB.panel.invest') }}</h2>
 
         <div v-if="hasInvested" class="invested-card">
-          <p class="invested-text">{{ t('investNB.investedText') }}</p>
+          <p class="invested-text">{{ t('investNB.investedText', { amount: selfInvestAmountText }) }}</p>
         </div>
 
         <template v-else>
@@ -70,12 +70,12 @@
             <span class="data-subvalue">≈ {{ nbBalanceUsdtText }} USDT</span>
           </div>
           <div class="data-item">
-            <span class="data-label">{{ t('investNB.data.nbLevel') }}</span>
-            <span class="data-value highlight">{{ currentLevelText }}</span>
-          </div>
-          <div class="data-item">
             <span class="data-label">{{ t('investNB.data.nbFriendResults') }}</span>
             <span class="data-value">{{ directPerfText }} USDT</span>
+          </div>
+          <div class="data-item">
+            <span class="data-label">{{ t('investNB.data.nbTeamPerformance') }}</span>
+            <span class="data-value">{{ nbTeamPerformanceText }} USDT</span>
           </div>
           <div class="data-item">
             <span class="data-label">{{ t('investNB.data.nbTeamResults') }}</span>
@@ -100,8 +100,14 @@
         <h2 class="panel-title s6-title">{{ t('investNB.panel.s6') }}</h2>
 
         <div class="dividend-status-row">
-          <span class="status-label">{{ t('investNB.status.current') }}</span>
-          <span class="status-badge" :class="s6StatusClass">{{ s6StatusText }}</span>
+          <div class="status-group">
+            <span class="status-label">{{ t('investNB.data.nbLevel') }}</span>
+            <span class="status-badge" :class="nbLevelBadgeClass">{{ currentLevelText }}</span>
+          </div>
+          <div class="status-group">
+            <span class="status-label">{{ t('investNB.status.current') }}</span>
+            <span class="status-badge" :class="s6StatusClass">{{ s6StatusText }}</span>
+          </div>
         </div>
 
         <div class="dividend-stats">
@@ -149,6 +155,7 @@ import { walletState } from '@/services/wallet';
 import { getContractAddress } from '@/services/contracts';
 import { showToast } from '@/services/notification';
 import nbAbi from '@/abis/NB.json';
+import nbManagerAbi from '@/abis/NBManager.json';
 import pancakeRouterV2Abi from '@/abis/pancakeRouterV2.json';
 
 const ERC20_ABI = [
@@ -159,21 +166,6 @@ const ERC20_ABI = [
 
 const REFERRAL_ABI = [
   'function isBindReferral(address) view returns (bool)'
-];
-
-const NBMANAGER_ABI = [
-  'function minInvestAmount() view returns (uint256)',
-  'function maxInvestAmount() view returns (uint256)',
-  'function hasInvested(address) view returns (bool)',
-  'function directTotalInvestValue(address) view returns (uint256)',
-  'function getTeamRewardInfo(address) view returns (uint256 performance, uint8 level, uint256 rewardRateBP)',
-  'function getTeamPerformance(address) view returns (uint256)',
-  'function isS6Registered(address) view returns (bool)',
-  'function s6PendingReward(address) view returns (uint256)',
-  'function userHarvestedReward(address) view returns (uint256)',
-  'function invest(uint256 amountIn, uint256 minMskeOut, uint256 minNbOut)',
-  'function registerS6(address user)',
-  'function s6Harvest()'
 ];
 
 const isDataLoading = ref(false);
@@ -188,7 +180,7 @@ const routerAddress = computed(() => getContractAddress('Router'));
 const mskeAddress = computed(() => getContractAddress('MSKE'));
 const nbAddress = computed(() => getContractAddress('NB'));
 const referralAddress = computed(() => getContractAddress('Referral'));
-const nbManagerAddress = ref('');
+const nbManagerAddress = computed(() => getContractAddress('NBManager'));
 
 const hasBoundReferral = ref(false);
 const usdtBalanceRaw = ref(0n);
@@ -198,8 +190,10 @@ const investAmount = ref('');
 const minInvestRaw = ref(ethers.parseUnits('100', 18));
 const maxInvestRaw = ref(ethers.parseUnits('3000', 18));
 const hasInvested = ref(false);
+const selfInvestRaw = ref(0n);
 const usdtAllowanceRaw = ref(0n);
 const directPerfRaw = ref(0n);
+const nbTeamPerformanceRaw = ref(0n);
 const teamPerfRaw = ref(0n);
 const currentLevel = ref(0);
 const totalQuotaRaw = ref(0n);
@@ -241,9 +235,11 @@ const nbBalanceUsdtText = computed(() => {
   if (nbBalanceUsdtRaw.value === null) return '--';
   return formatU(nbBalanceUsdtRaw.value);
 });
+const selfInvestAmountText = computed(() => formatU(selfInvestRaw.value));
 const minInvestAmountText = computed(() => formatU(minInvestRaw.value));
 const maxInvestAmountText = computed(() => formatU(maxInvestRaw.value));
 const directPerfText = computed(() => formatU(directPerfRaw.value));
+const nbTeamPerformanceText = computed(() => formatU(nbTeamPerformanceRaw.value));
 const teamPerfText = computed(() => formatU(teamPerfRaw.value));
 const totalQuotaText = computed(() => formatU(totalQuotaRaw.value));
 const usedQuotaText = computed(() => formatU(usedQuotaRaw.value));
@@ -274,6 +270,7 @@ const s6StatusClass = computed(() => {
   if (s6PendingRaw.value > 0n) return 'is-success';
   return 'is-ready';
 });
+const nbLevelBadgeClass = computed(() => (currentLevel.value > 0 ? 'is-ready' : 'is-locked'));
 const s6HintText = computed(() => {
   if (!isS6Eligible.value) return '';
   if (showS6RegisterButton.value) return t('investNB.s6.hint.activate');
@@ -303,7 +300,7 @@ const investAmountRaw = computed(() => {
 const investDisabled = computed(() => {
   if (!walletState.isConnected || !walletState.address) return true;
   if (isDataLoading.value || isInvesting.value) return true;
-  if (!nbManagerAddress.value) return true;
+  if (!ethers.isAddress(nbManagerAddress.value || '')) return true;
   if (hasInvested.value) return true;
   if (!hasBoundReferral.value) return true;
   if (investAmountRaw.value < minInvestRaw.value || investAmountRaw.value > maxInvestRaw.value) return true;
@@ -374,8 +371,10 @@ const resetUserData = () => {
   nbBalanceRaw.value = 0n;
   nbBalanceUsdtRaw.value = 0n;
   hasInvested.value = false;
+  selfInvestRaw.value = 0n;
   usdtAllowanceRaw.value = 0n;
   directPerfRaw.value = 0n;
+  nbTeamPerformanceRaw.value = 0n;
   teamPerfRaw.value = 0n;
   currentLevel.value = 0;
   totalQuotaRaw.value = 0n;
@@ -405,7 +404,7 @@ const loadData = async () => {
   isDataLoading.value = true;
   const provider = getProvider();
 
-  if (!provider || !nbAddress.value) {
+  if (!provider || !nbAddress.value || !ethers.isAddress(nbManagerAddress.value || '')) {
     resetUserData();
     isDataLoading.value = false;
     return;
@@ -413,10 +412,6 @@ const loadData = async () => {
 
   try {
     const nbContract = new ethers.Contract(nbAddress.value, nbAbi, provider);
-
-    if (!nbManagerAddress.value) {
-      nbManagerAddress.value = await nbContract.NBManager().catch(() => '');
-    }
 
     if (!walletState.isConnected || !walletState.address || !nbManagerAddress.value) {
       resetUserData();
@@ -426,7 +421,7 @@ const loadData = async () => {
     const user = walletState.address;
     const usdtContract = new ethers.Contract(usdtAddress.value, ERC20_ABI, provider);
     const referralContract = new ethers.Contract(referralAddress.value, REFERRAL_ABI, provider);
-    const nbManager = new ethers.Contract(nbManagerAddress.value, NBMANAGER_ABI, provider);
+    const nbManager = new ethers.Contract(nbManagerAddress.value, nbManagerAbi, provider);
 
     const [
       uBal,
@@ -436,7 +431,9 @@ const loadData = async () => {
       minInv,
       maxInv,
       invested,
+      selfInvestAmount,
       directPerf,
+      nbTeamPerformance,
       teamInfo,
       teamPerf,
       s6Reg,
@@ -453,7 +450,9 @@ const loadData = async () => {
       nbManager.minInvestAmount().catch(() => ethers.parseUnits('100', 18)),
       nbManager.maxInvestAmount().catch(() => ethers.parseUnits('3000', 18)),
       nbManager.hasInvested(user).catch(() => false),
+      nbManager.selfTotalInvestValue(user).catch(() => 0n),
       nbManager.directTotalInvestValue(user).catch(() => 0n),
+      nbManager.referralTotalInvestValue(user).catch(() => 0n),
       nbManager.getTeamRewardInfo(user).catch(() => [0n, 0, 0]),
       nbManager.getTeamPerformance(user).catch(() => 0n),
       nbManager.isS6Registered(user).catch(() => false),
@@ -471,8 +470,10 @@ const loadData = async () => {
     hasBoundReferral.value = isBound;
     minInvestRaw.value = minInv;
     maxInvestRaw.value = maxInv;
-    hasInvested.value = invested;
+    selfInvestRaw.value = selfInvestAmount;
+    hasInvested.value = invested || selfInvestAmount > 0n;
     directPerfRaw.value = directPerf;
+    nbTeamPerformanceRaw.value = nbTeamPerformance;
     teamPerfRaw.value = teamPerf > 0n ? teamPerf : (teamInfo?.[0] ?? 0n);
     currentLevel.value = Number(teamInfo?.[1] ?? 0);
     isS6Registered.value = s6Reg;
@@ -491,7 +492,7 @@ const loadData = async () => {
 const handleInvestClick = async () => {
   if (investDisabled.value) return;
   const signer = walletState.signer;
-  if (!signer || !nbManagerAddress.value) return;
+  if (!signer || !ethers.isAddress(nbManagerAddress.value || '')) return;
 
   try {
     isInvesting.value = true;
@@ -506,7 +507,7 @@ const handleInvestClick = async () => {
       return;
     }
 
-    const nbManager = new ethers.Contract(nbManagerAddress.value, NBMANAGER_ABI, signer);
+    const nbManager = new ethers.Contract(nbManagerAddress.value, nbManagerAbi, signer);
     const tx = await nbManager.invest(investAmountRaw.value, 0, 0);
     showToast(t('toast.investNB.investSubmitted'), 'info');
     await tx.wait();
@@ -524,11 +525,11 @@ const handleInvestClick = async () => {
 const handleRegisterS6 = async () => {
   if (!canRegisterS6.value) return;
   const signer = walletState.signer;
-  if (!signer || !walletState.address || !nbManagerAddress.value) return;
+  if (!signer || !walletState.address || !ethers.isAddress(nbManagerAddress.value || '')) return;
 
   try {
     isRegisteringS6.value = true;
-    const nbManager = new ethers.Contract(nbManagerAddress.value, NBMANAGER_ABI, signer);
+    const nbManager = new ethers.Contract(nbManagerAddress.value, nbManagerAbi, signer);
     const tx = await nbManager.registerS6(walletState.address);
     showToast(t('toast.investNB.s6ActivateSubmitted'), 'info');
     await tx.wait();
@@ -545,11 +546,11 @@ const handleRegisterS6 = async () => {
 const handleHarvestS6 = async () => {
   if (!canHarvestS6.value) return;
   const signer = walletState.signer;
-  if (!signer || !nbManagerAddress.value) return;
+  if (!signer || !ethers.isAddress(nbManagerAddress.value || '')) return;
 
   try {
     isHarvestingS6.value = true;
-    const nbManager = new ethers.Contract(nbManagerAddress.value, NBMANAGER_ABI, signer);
+    const nbManager = new ethers.Contract(nbManagerAddress.value, nbManagerAbi, signer);
     const tx = await nbManager.s6Harvest();
     showToast(t('toast.investNB.s6HarvestSubmitted'), 'info');
     await tx.wait();
@@ -903,11 +904,17 @@ onBeforeUnmount(() => {
 }
 
 .dividend-status-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.status-group {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid rgba(255, 99, 50, 0.15);
@@ -952,7 +959,8 @@ onBeforeUnmount(() => {
 }
 
 .dividend-stats {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 12px;
   margin-bottom: 16px;
 }
