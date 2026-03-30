@@ -51,7 +51,7 @@ export default {
     },
     computed: {
         appVersion() {
-            return APP_ENV === 'PROD' ? 'P-1.2' : 'T-1.2';
+            return APP_ENV === 'PROD' ? 'P-1.3' : 'T-1.3';
         }
     }
 }

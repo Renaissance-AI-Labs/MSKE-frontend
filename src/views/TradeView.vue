@@ -3,8 +3,8 @@
     <div class="page-bg-glow"></div>
 
     <section class="page-header">
-      <h1 class="page-title">闪兑</h1>
-      <p class="page-subtitle">快捷买卖与一键 Swap</p>
+      <h1 class="page-title">{{ t('trade.title') }}</h1>
+      <p class="page-subtitle">{{ t('trade.subtitle') }}</p>
     </section>
 
     <section class="trade-panel">
@@ -12,16 +12,16 @@
       <div v-if="showDexscreenerChart" class="chart-frame" v-html="dexscreenerEmbedHtml"></div>
       <div ref="modeTabsRef" class="mode-tabs">
         <button class="mode-btn" :class="{ active: tradeDirection === 'sell' }" @click="setTradeDirection('sell')">
-          卖出
+          {{ t('trade.tab.sell') }}
         </button>
         <button class="mode-btn" :class="{ active: tradeDirection === 'buy' }" @click="setTradeDirection('buy')">
-          买入
+          {{ t('trade.tab.buy') }}
         </button>
       </div>
 
       <div class="input-card">
         <div class="input-head">
-          <span class="field-label">输入 ({{ inputSymbol }})</span>
+          <span class="field-label">{{ t('trade.field.input', { symbol: inputSymbol }) }}</span>
           <button class="max-btn" :disabled="!canUseMax" @click="handleSetMax">MAX</button>
         </div>
         <div class="token-input-wrap">
@@ -61,29 +61,61 @@
           />
         </div>
 
+        <div v-if="tradeDirection === 'buy'" class="buy-target-card">
+          <div class="buy-target-head">
+            <span class="field-label">{{ t('trade.buyTarget.label') }}</span>
+          </div>
+          <div class="buy-target-options">
+            <button
+              type="button"
+              class="buy-target-option"
+              :class="{ active: buyToken === 'MSKE' }"
+              @click="selectBuyToken('MSKE')"
+            >
+              <img src="/asset/images/logo/Logo-coin.png" class="buy-target-option-logo" alt="MSKE" />
+              <span class="buy-target-option-text">
+                <span class="buy-target-option-symbol">MSKE</span>
+                <!-- <span class="buy-target-option-path">USDT -> MSKE</span> -->
+              </span>
+            </button>
+            <button
+              type="button"
+              class="buy-target-option"
+              :class="{ active: buyToken === 'NB' }"
+              @click="selectBuyToken('NB')"
+            >
+              <img src="/asset/images/logo/nb_coin.png" class="buy-target-option-logo buy-target-option-logo--nb" alt="NB" />
+              <span class="buy-target-option-text">
+                <span class="buy-target-option-symbol">NB</span>
+                <!-- <span class="buy-target-option-path">USDT -> MSKE -> NB</span> -->
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div class="details-block">
           <div class="summary-row">
-            <span>余额</span>
+            <span>{{ t('trade.summary.balance') }}</span>
             <span>{{ displayBalance }} {{ inputSymbol }}</span>
           </div>
           <div class="summary-row">
-            <span>预计到手</span>
+            <span>{{ t('trade.summary.estimatedOut') }}</span>
             <span>{{ displayEstimatedOut }} {{ outputSymbol }}</span>
           </div>
           <div v-if="isNbSellMode" class="summary-row">
-            <span>剩余额度</span>
+            <span>{{ t('trade.summary.remainingQuota') }}</span>
             <span>{{ displayNbRemainingQuota }} USDT</span>
           </div>
           <div class="summary-row">
-            <span>最低接收</span>
+            <span>{{ t('trade.summary.minimumOut') }}</span>
             <span>{{ displayMinimumOut }} {{ outputSymbol }}</span>
           </div>
           <div class="summary-row">
-            <span>价格影响</span>
+            <span>{{ t('trade.summary.priceImpact') }}</span>
             <span :class="priceImpactClass">{{ displayPriceImpact }}</span>
           </div>
           <div class="summary-row settings-row">
-            <span>滑点</span>
+            <span>{{ t('trade.summary.slippage') }}</span>
             <div class="slippage-input-wrap">
               <input
                 v-model="slippage"
@@ -105,7 +137,7 @@
       </div>
 
       <p v-if="configurationHint" class="hint-line warning">{{ configurationHint }}</p>
-      <p v-else-if="!walletState.isConnected" class="hint-line">请先连接钱包后再进行交易。</p>
+      <p v-else-if="!walletState.isConnected" class="hint-line">{{ t('trade.hint.connectWallet') }}</p>
 
       <button class="confirm-btn" :disabled="swapDisabled" @click="handleActionClick">
         {{ actionButtonText }}
@@ -115,20 +147,20 @@
     <transition name="modal">
       <div v-if="isTokenSelectorVisible" class="modal-mask" @click.self="closeTokenSelector">
         <div class="modal-container token-selector-modal">
-          <h3 class="modal-title">选择代币</h3>
+          <h3 class="modal-title">{{ t('trade.modal.selectTokenTitle') }}</h3>
           <div class="token-list">
             <div class="token-list-item" @click="selectSellToken('MSKE')" :class="{ active: sellToken === 'MSKE' }">
               <img src="/asset/images/logo/Logo-coin.png" class="token-list-logo" alt="MSKE" />
               <div class="token-list-info">
                 <span class="token-list-symbol">MSKE</span>
-                <span class="token-list-name">MSKE Token</span>
+                <span class="token-list-name">{{ t('trade.token.mskeName') }}</span>
               </div>
             </div>
             <div class="token-list-item" @click="selectSellToken('NB')" :class="{ active: sellToken === 'NB' }">
               <img src="/asset/images/logo/nb_coin.png" class="token-list-logo token-list-logo--nb" alt="NB" />
               <div class="token-list-info">
                 <span class="token-list-symbol">NB</span>
-                <span class="token-list-name">NB Token</span>
+                <span class="token-list-name">{{ t('trade.token.nbName') }}</span>
               </div>
             </div>
           </div>
@@ -139,13 +171,13 @@
     <transition name="modal">
       <div v-if="isImpactConfirmVisible" class="modal-mask" @click.self="closeImpactConfirm">
         <div class="modal-container">
-          <h3 class="modal-title">高价格影响提醒</h3>
+          <h3 class="modal-title">{{ t('trade.modal.highImpactTitle') }}</h3>
           <p class="modal-desc">
-            当前价格影响约为 <strong>{{ displayPriceImpact }}</strong>，继续交易可能导致较大滑点损耗。
+            {{ t('trade.modal.highImpactPrefix') }}<strong>{{ displayPriceImpact }}</strong>{{ t('trade.modal.highImpactSuffix') }}
           </p>
           <div class="modal-actions">
-            <button class="modal-btn" @click="closeImpactConfirm">取消</button>
-            <button class="modal-btn primary" @click="confirmImpactAndSwap">继续交易</button>
+            <button class="modal-btn" @click="closeImpactConfirm">{{ t('trade.modal.cancel') }}</button>
+            <button class="modal-btn primary" @click="confirmImpactAndSwap">{{ t('trade.modal.continue') }}</button>
           </div>
         </div>
       </div>
@@ -203,6 +235,7 @@ const loadSlippageCache = () => {
 
 const tradeDirection = ref('sell');
 const sellToken = ref('MSKE');
+const buyToken = ref('MSKE');
 const isTokenSelectorVisible = ref(false);
 const inputAmount = ref('');
 const modeTabsRef = ref(null);
@@ -246,7 +279,7 @@ const inputSymbol = computed(() => {
   return sellToken.value;
 });
 const outputSymbol = computed(() => {
-  if (tradeDirection.value === 'buy') return 'MSKE'; // Buy always outputs MSKE
+  if (tradeDirection.value === 'buy') return buyToken.value;
   return 'USDT'; // Sell always outputs USDT
 });
 const inputTokenLogo = computed(() => {
@@ -262,10 +295,23 @@ const inputTokenAddress = computed(() => {
   return mskeAddress.value;
 });
 const outputTokenAddress = computed(() => {
-  if (tradeDirection.value === 'buy') return mskeAddress.value;
+  if (tradeDirection.value === 'buy') {
+    if (buyToken.value === 'NB') return nbAddress.value;
+    return mskeAddress.value;
+  }
   return usdtAddress.value;
 });
 const isNbSellMode = computed(() => tradeDirection.value === 'sell' && sellToken.value === 'NB');
+const isBuyNbMode = computed(() => tradeDirection.value === 'buy' && buyToken.value === 'NB');
+const currentSwapPath = computed(() => {
+  if (isNbSellMode.value) {
+    return [nbAddress.value, mskeAddress.value, usdtAddress.value];
+  }
+  if (isBuyNbMode.value) {
+    return [usdtAddress.value, mskeAddress.value, nbAddress.value];
+  }
+  return [inputTokenAddress.value, outputTokenAddress.value];
+});
 const currentSlippageCacheKey = computed(() => tradeDirection.value);
 
 const normalizedSlippage = computed(() => {
@@ -292,17 +338,23 @@ const isSwapConfigured = computed(() => {
       && ethers.isAddress(nbAddress.value || '')
       && ethers.isAddress(nbMskeLpAddress.value || '');
   }
+  if (isBuyNbMode.value) {
+    return ethers.isAddress(routerAddress.value || '')
+      && ethers.isAddress(usdtAddress.value || '')
+      && ethers.isAddress(mskeAddress.value || '')
+      && ethers.isAddress(nbAddress.value || '');
+  }
   return ethers.isAddress(routerAddress.value || '')
     && ethers.isAddress(usdtAddress.value || '')
     && ethers.isAddress(mskeAddress.value || '');
 });
 
 const configurationHint = computed(() => {
-  if (!ethers.isAddress(routerAddress.value || '')) return 'Router 地址未配置，请先在 contracts.js 中完善。';
-  if (!ethers.isAddress(usdtAddress.value || '')) return 'USDT 地址未配置，请先在 contracts.js 中完善。';
-  if (!ethers.isAddress(mskeAddress.value || '')) return 'MSKE 地址未配置，请先在 contracts.js 中完善。';
-  if (isNbSellMode.value && !ethers.isAddress(nbAddress.value || '')) return 'NB 地址未配置，请先在 contracts.js 中完善。';
-  if (isNbSellMode.value && !ethers.isAddress(nbMskeLpAddress.value || '')) return 'NB/MSKE LP 地址未配置，请先在 contracts.js 中完善。';
+  if (!ethers.isAddress(routerAddress.value || '')) return t('trade.config.routerMissing');
+  if (!ethers.isAddress(usdtAddress.value || '')) return t('trade.config.usdtMissing');
+  if (!ethers.isAddress(mskeAddress.value || '')) return t('trade.config.mskeMissing');
+  if ((isNbSellMode.value || isBuyNbMode.value) && !ethers.isAddress(nbAddress.value || '')) return t('trade.config.nbMissing');
+  if (isNbSellMode.value && !ethers.isAddress(nbMskeLpAddress.value || '')) return t('trade.config.nbLpMissing');
   return '';
 });
 
@@ -363,18 +415,18 @@ const requiresApproval = computed(() => {
 
 const actionButtonText = computed(() => {
   if (!isBuyTradeEnabled.value) return t('trade.action.notOpenYet');
-  if (isExecuting.value) return '交易提交中...';
-  if (isQuoting.value) return '报价计算中...';
-  if (isNbCoolingDown.value) return '冷却中，请稍后再卖';
-  if (isNbSellMode.value && !hasNbSellQuota.value) return '无卖出额度';
-  if (inputAmount.value && !inputAmountRaw.value) return '输入金额无效';
-  if (inputAmountRaw.value && inputAmountRaw.value > balanceRaw.value) return '余额不足';
-  if (exceedsNbPairLimit.value) return '超出单次最大卖出量';
-  if (exceedsNbSellQuota.value) return '超出剩余卖出额度';
+  if (isExecuting.value) return t('trade.action.submitting');
+  if (isQuoting.value) return t('trade.action.quoting');
+  if (isNbCoolingDown.value) return t('trade.action.coolingDown');
+  if (isNbSellMode.value && !hasNbSellQuota.value) return t('trade.action.noSellQuota');
+  if (inputAmount.value && !inputAmountRaw.value) return t('trade.action.invalidAmount');
+  if (inputAmountRaw.value && inputAmountRaw.value > balanceRaw.value) return t('trade.action.insufficientBalance');
+  if (exceedsNbPairLimit.value) return t('trade.action.exceedsPairLimit');
+  if (exceedsNbSellQuota.value) return t('trade.action.exceedsQuota');
   if (requiresApproval.value) {
-    return `授权 ${inputSymbol.value}`;
+    return t('trade.action.approveToken', { symbol: inputSymbol.value });
   }
-  return '确认交易';
+  return t('trade.action.confirmTrade');
 });
 
 const getProvider = () => {
@@ -526,13 +578,7 @@ const refreshQuote = async () => {
     }
     const routerContract = getRouterContract(provider);
     
-    let path;
-    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
-      path = [nbAddress.value, mskeAddress.value, usdtAddress.value];
-    } else {
-      path = [inputTokenAddress.value, outputTokenAddress.value];
-    }
-    
+    const path = currentSwapPath.value;
     const amountsOut = await routerContract.getAmountsOut(amountInRaw, path);
     const outRaw = amountsOut[amountsOut.length - 1];
     if (requestId !== quoteRequestId.value) return;
@@ -637,6 +683,13 @@ const selectSellToken = (token) => {
   slippage.value = getCachedSlippage('sell');
 };
 
+const selectBuyToken = (token) => {
+  if (buyToken.value === token) return;
+  buyToken.value = token;
+  quoteRequestId.value += 1;
+  slippage.value = getCachedSlippage('buy');
+};
+
 const applyRoutePresetFromQuery = async () => {
   const targetDirection = route.query.direction === 'buy' || route.query.direction === 'sell'
     ? route.query.direction
@@ -652,6 +705,10 @@ const applyRoutePresetFromQuery = async () => {
 
   if ((targetDirection === 'sell' || tradeDirection.value === 'sell') && targetToken && sellToken.value !== targetToken) {
     selectSellToken(targetToken);
+  }
+
+  if ((targetDirection === 'buy' || tradeDirection.value === 'buy') && targetToken && buyToken.value !== targetToken) {
+    selectBuyToken(targetToken);
   }
 
   if (shouldScrollToTabs) {
@@ -758,7 +815,7 @@ const executeSwap = async (skipImpactConfirm = false) => {
     return;
   }
   if (isNbSellMode.value && nbMaxSellRaw.value > 0n && amountInRaw > nbMaxSellRaw.value) {
-    showToast('单次卖出不能超过池子 NB 储备的 10%', 'warning');
+    showToast(t('toast.trade.nbPairLimit'), 'warning');
     return;
   }
   if (requiresApproval.value) {
@@ -771,11 +828,11 @@ const executeSwap = async (skipImpactConfirm = false) => {
     if (isNbSellMode.value) {
       await refreshNbData();
       if (nbMaxSellRaw.value > 0n && amountInRaw > nbMaxSellRaw.value) {
-        showToast('单次卖出不能超过池子 NB 储备的 10%', 'warning');
+        showToast(t('toast.trade.nbPairLimit'), 'warning');
         return;
       }
       if (!hasNbSellQuota.value) {
-        showToast('当前无卖出额度，请先通过直推解锁', 'warning');
+        showToast(t('toast.trade.nbQuotaUnlock'), 'warning');
         return;
       }
     }
@@ -788,7 +845,7 @@ const executeSwap = async (skipImpactConfirm = false) => {
     await refreshQuote();
     if (quoteAmountOutRaw.value <= 0n) throw new Error('INVALID_QUOTE');
     if (isNbSellMode.value && exceedsNbSellQuota.value) {
-      showToast('超出剩余卖出额度', 'warning');
+      showToast(t('toast.trade.nbQuotaExceeded'), 'warning');
       return;
     }
     if (!skipImpactConfirm && isHighPriceImpact.value && !(tradeDirection.value === 'sell' && sellToken.value === 'NB')) {
@@ -804,12 +861,7 @@ const executeSwap = async (skipImpactConfirm = false) => {
     const minOutRaw = quoteAmountOutRaw.value * BigInt(10000 - slippageBps) / 10000n;
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
     
-    let path;
-    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
-      path = [nbAddress.value, mskeAddress.value, usdtAddress.value];
-    } else {
-      path = [inputTokenAddress.value, outputTokenAddress.value];
-    }
+    const path = currentSwapPath.value;
 
     console.log('[Contract Call] swapExactTokensForTokensSupportingFeeOnTransferTokens params:', {
       tradeDirection: tradeDirection.value,
@@ -935,7 +987,7 @@ watch(
 );
 
 watch(
-  () => [inputAmount.value, slippage.value, tradeDirection.value, sellToken.value],
+  () => [inputAmount.value, slippage.value, tradeDirection.value, sellToken.value, buyToken.value],
   () => {
     scheduleQuoteRefresh();
   }
@@ -1135,6 +1187,75 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 0 10px;
   background: rgba(14, 9, 7, 0.8);
+}
+
+.buy-target-card {
+  margin-top: 10px;
+}
+
+.buy-target-head {
+  margin-bottom: 8px;
+}
+
+.buy-target-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.buy-target-option {
+  border: 1px solid rgba(255, 114, 67, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(14, 9, 7, 0.78);
+  color: #f3dfcf;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.buy-target-option:hover {
+  border-color: rgba(255, 120, 70, 0.45);
+  background: rgba(255, 69, 0, 0.12);
+}
+
+.buy-target-option.active {
+  border-color: rgba(255, 120, 70, 0.55);
+  background: rgba(255, 69, 0, 0.18);
+  color: #fff0e1;
+}
+
+.buy-target-option-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.buy-target-option-logo--nb {
+  transform: scale(0.9);
+}
+
+.buy-target-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.buy-target-option-symbol {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.buy-target-option-path {
+  font-size: 0.72rem;
+  color: rgba(243, 223, 207, 0.72);
+  line-height: 1.35;
 }
 
 .token-chip {
