@@ -61,6 +61,38 @@
           />
         </div>
 
+        <div v-if="tradeDirection === 'buy'" class="buy-target-card">
+          <div class="buy-target-head">
+            <span class="field-label">获取</span>
+          </div>
+          <div class="buy-target-options">
+            <button
+              type="button"
+              class="buy-target-option"
+              :class="{ active: buyToken === 'MSKE' }"
+              @click="selectBuyToken('MSKE')"
+            >
+              <img src="/asset/images/logo/Logo-coin.png" class="buy-target-option-logo" alt="MSKE" />
+              <span class="buy-target-option-text">
+                <span class="buy-target-option-symbol">MSKE</span>
+                <!-- <span class="buy-target-option-path">USDT -> MSKE</span> -->
+              </span>
+            </button>
+            <button
+              type="button"
+              class="buy-target-option"
+              :class="{ active: buyToken === 'NB' }"
+              @click="selectBuyToken('NB')"
+            >
+              <img src="/asset/images/logo/nb_coin.png" class="buy-target-option-logo buy-target-option-logo--nb" alt="NB" />
+              <span class="buy-target-option-text">
+                <span class="buy-target-option-symbol">NB</span>
+                <!-- <span class="buy-target-option-path">USDT -> MSKE -> NB</span> -->
+              </span>
+            </button>
+          </div>
+        </div>
+
         <div class="details-block">
           <div class="summary-row">
             <span>余额</span>
@@ -203,6 +235,7 @@ const loadSlippageCache = () => {
 
 const tradeDirection = ref('sell');
 const sellToken = ref('MSKE');
+const buyToken = ref('MSKE');
 const isTokenSelectorVisible = ref(false);
 const inputAmount = ref('');
 const modeTabsRef = ref(null);
@@ -246,7 +279,7 @@ const inputSymbol = computed(() => {
   return sellToken.value;
 });
 const outputSymbol = computed(() => {
-  if (tradeDirection.value === 'buy') return 'MSKE'; // Buy always outputs MSKE
+  if (tradeDirection.value === 'buy') return buyToken.value;
   return 'USDT'; // Sell always outputs USDT
 });
 const inputTokenLogo = computed(() => {
@@ -262,10 +295,23 @@ const inputTokenAddress = computed(() => {
   return mskeAddress.value;
 });
 const outputTokenAddress = computed(() => {
-  if (tradeDirection.value === 'buy') return mskeAddress.value;
+  if (tradeDirection.value === 'buy') {
+    if (buyToken.value === 'NB') return nbAddress.value;
+    return mskeAddress.value;
+  }
   return usdtAddress.value;
 });
 const isNbSellMode = computed(() => tradeDirection.value === 'sell' && sellToken.value === 'NB');
+const isBuyNbMode = computed(() => tradeDirection.value === 'buy' && buyToken.value === 'NB');
+const currentSwapPath = computed(() => {
+  if (isNbSellMode.value) {
+    return [nbAddress.value, mskeAddress.value, usdtAddress.value];
+  }
+  if (isBuyNbMode.value) {
+    return [usdtAddress.value, mskeAddress.value, nbAddress.value];
+  }
+  return [inputTokenAddress.value, outputTokenAddress.value];
+});
 const currentSlippageCacheKey = computed(() => tradeDirection.value);
 
 const normalizedSlippage = computed(() => {
@@ -292,6 +338,12 @@ const isSwapConfigured = computed(() => {
       && ethers.isAddress(nbAddress.value || '')
       && ethers.isAddress(nbMskeLpAddress.value || '');
   }
+  if (isBuyNbMode.value) {
+    return ethers.isAddress(routerAddress.value || '')
+      && ethers.isAddress(usdtAddress.value || '')
+      && ethers.isAddress(mskeAddress.value || '')
+      && ethers.isAddress(nbAddress.value || '');
+  }
   return ethers.isAddress(routerAddress.value || '')
     && ethers.isAddress(usdtAddress.value || '')
     && ethers.isAddress(mskeAddress.value || '');
@@ -301,7 +353,7 @@ const configurationHint = computed(() => {
   if (!ethers.isAddress(routerAddress.value || '')) return 'Router 地址未配置，请先在 contracts.js 中完善。';
   if (!ethers.isAddress(usdtAddress.value || '')) return 'USDT 地址未配置，请先在 contracts.js 中完善。';
   if (!ethers.isAddress(mskeAddress.value || '')) return 'MSKE 地址未配置，请先在 contracts.js 中完善。';
-  if (isNbSellMode.value && !ethers.isAddress(nbAddress.value || '')) return 'NB 地址未配置，请先在 contracts.js 中完善。';
+  if ((isNbSellMode.value || isBuyNbMode.value) && !ethers.isAddress(nbAddress.value || '')) return 'NB 地址未配置，请先在 contracts.js 中完善。';
   if (isNbSellMode.value && !ethers.isAddress(nbMskeLpAddress.value || '')) return 'NB/MSKE LP 地址未配置，请先在 contracts.js 中完善。';
   return '';
 });
@@ -526,13 +578,7 @@ const refreshQuote = async () => {
     }
     const routerContract = getRouterContract(provider);
     
-    let path;
-    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
-      path = [nbAddress.value, mskeAddress.value, usdtAddress.value];
-    } else {
-      path = [inputTokenAddress.value, outputTokenAddress.value];
-    }
-    
+    const path = currentSwapPath.value;
     const amountsOut = await routerContract.getAmountsOut(amountInRaw, path);
     const outRaw = amountsOut[amountsOut.length - 1];
     if (requestId !== quoteRequestId.value) return;
@@ -637,6 +683,13 @@ const selectSellToken = (token) => {
   slippage.value = getCachedSlippage('sell');
 };
 
+const selectBuyToken = (token) => {
+  if (buyToken.value === token) return;
+  buyToken.value = token;
+  quoteRequestId.value += 1;
+  slippage.value = getCachedSlippage('buy');
+};
+
 const applyRoutePresetFromQuery = async () => {
   const targetDirection = route.query.direction === 'buy' || route.query.direction === 'sell'
     ? route.query.direction
@@ -652,6 +705,10 @@ const applyRoutePresetFromQuery = async () => {
 
   if ((targetDirection === 'sell' || tradeDirection.value === 'sell') && targetToken && sellToken.value !== targetToken) {
     selectSellToken(targetToken);
+  }
+
+  if ((targetDirection === 'buy' || tradeDirection.value === 'buy') && targetToken && buyToken.value !== targetToken) {
+    selectBuyToken(targetToken);
   }
 
   if (shouldScrollToTabs) {
@@ -804,12 +861,7 @@ const executeSwap = async (skipImpactConfirm = false) => {
     const minOutRaw = quoteAmountOutRaw.value * BigInt(10000 - slippageBps) / 10000n;
     const deadline = BigInt(Math.floor(Date.now() / 1000) + 60 * 10);
     
-    let path;
-    if (tradeDirection.value === 'sell' && sellToken.value === 'NB') {
-      path = [nbAddress.value, mskeAddress.value, usdtAddress.value];
-    } else {
-      path = [inputTokenAddress.value, outputTokenAddress.value];
-    }
+    const path = currentSwapPath.value;
 
     console.log('[Contract Call] swapExactTokensForTokensSupportingFeeOnTransferTokens params:', {
       tradeDirection: tradeDirection.value,
@@ -935,7 +987,7 @@ watch(
 );
 
 watch(
-  () => [inputAmount.value, slippage.value, tradeDirection.value, sellToken.value],
+  () => [inputAmount.value, slippage.value, tradeDirection.value, sellToken.value, buyToken.value],
   () => {
     scheduleQuoteRefresh();
   }
@@ -1135,6 +1187,75 @@ onBeforeUnmount(() => {
   align-items: center;
   padding: 0 10px;
   background: rgba(14, 9, 7, 0.8);
+}
+
+.buy-target-card {
+  margin-top: 10px;
+}
+
+.buy-target-head {
+  margin-bottom: 8px;
+}
+
+.buy-target-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.buy-target-option {
+  border: 1px solid rgba(255, 114, 67, 0.24);
+  border-radius: 12px;
+  padding: 10px;
+  background: rgba(14, 9, 7, 0.78);
+  color: #f3dfcf;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.buy-target-option:hover {
+  border-color: rgba(255, 120, 70, 0.45);
+  background: rgba(255, 69, 0, 0.12);
+}
+
+.buy-target-option.active {
+  border-color: rgba(255, 120, 70, 0.55);
+  background: rgba(255, 69, 0, 0.18);
+  color: #fff0e1;
+}
+
+.buy-target-option-logo {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.buy-target-option-logo--nb {
+  transform: scale(0.9);
+}
+
+.buy-target-option-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.buy-target-option-symbol {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: inherit;
+}
+
+.buy-target-option-path {
+  font-size: 0.72rem;
+  color: rgba(243, 223, 207, 0.72);
+  line-height: 1.35;
 }
 
 .token-chip {

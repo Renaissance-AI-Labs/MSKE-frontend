@@ -36,7 +36,7 @@ export const APP_ENV = getAppEnv();
  */
 export const SHOW_STAKING_ADVANCED_STATS = false;
 export const ENABLE_ORDER_HARVEST = false;
-export const ENABLE_BUY_TRADE = false;
+export const ENABLE_BUY_TRADE = true;
 
 /**
  * Disable console logs in production
