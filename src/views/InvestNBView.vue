@@ -99,14 +99,10 @@
         <div class="panel-decor"></div>
         <h2 class="panel-title s6-title">{{ t('investNB.panel.s6') }}</h2>
 
-        <div class="dividend-status-row">
+        <div class="dividend-status-row single-col" v-if="currentLevel !== 7">
           <div class="status-group">
             <span class="status-label">{{ t('investNB.data.nbLevel') }}</span>
             <span class="status-badge" :class="nbLevelBadgeClass">{{ currentLevelText }}</span>
-          </div>
-          <div class="status-group">
-            <span class="status-label">{{ t('investNB.status.current') }}</span>
-            <span class="status-badge" :class="s6StatusClass">{{ s6StatusText }}</span>
           </div>
         </div>
 
@@ -134,12 +130,43 @@
           {{ isRegisteringS6 ? t('investNB.s6.action.activating') : t('investNB.s6.action.activate') }}
         </button>
         <button
-          v-else-if="isS6Registered"
+          v-else
           class="confirm-btn primary"
           :disabled="!canHarvestS6"
           @click="handleHarvestS6"
         >
           {{ isHarvestingS6 ? t('investNB.s6.action.harvesting') : t('investNB.s6.action.harvest') }}
+        </button>
+      </section>
+
+      <section class="content-panel dividend-panel s7-panel">
+        <div class="panel-decor"></div>
+        <h2 class="panel-title s7-title">{{ t('investNB.panel.s7') }}</h2>
+
+        <div class="dividend-status-row single-col">
+          <div class="status-group">
+            <span class="status-label">{{ t('investNB.status.shareholder') }}</span>
+            <span class="status-badge" :class="s7StatusClass">{{ s7StatusText }}</span>
+          </div>
+        </div>
+
+        <div class="dividend-stats">
+          <div class="stat-box">
+            <span class="stat-label">{{ t('investNB.s7.pendingReward') }}</span>
+            <span class="stat-value highlight">{{ shareholderPendingText }} USDT</span>
+          </div>
+          <div class="stat-box">
+            <span class="stat-label">{{ t('investNB.s7.harvestedReward') }}</span>
+            <span class="stat-value">{{ shareholderHarvestedText }} USDT</span>
+          </div>
+        </div>
+
+        <button
+          class="confirm-btn primary"
+          :disabled="!canHarvestShareholder"
+          @click="handleHarvestShareholder"
+        >
+          {{ isHarvestingShareholder ? t('investNB.s7.action.harvesting') : t('investNB.s7.action.harvest') }}
         </button>
       </section>
     </div>
@@ -202,6 +229,11 @@ const remainingQuotaRaw = ref(0n);
 const isS6Registered = ref(false);
 const s6PendingRaw = ref(0n);
 const s6HarvestedRaw = ref(0n);
+const isShareholderQualified = ref(false);
+const isShareholder = ref(false);
+const shareholderPendingRaw = ref(0n);
+const shareholderHarvestedRaw = ref(0n);
+const isHarvestingShareholder = ref(false);
 
 const formatU = (val, decimals = 18) => {
   const num = Number(ethers.formatUnits(val, decimals));
@@ -251,6 +283,7 @@ const quotaProgress = computed(() => {
 const referralStatusText = computed(() => t('investNB.referral.unbound'));
 const currentLevelText = computed(() => {
   if (currentLevel.value <= 0) return t('investNB.level.none');
+  if (currentLevel.value === 7) return t('investNB.level.shareholder');
   return `S${currentLevel.value}`;
 });
 
@@ -275,10 +308,25 @@ const s6HintText = computed(() => {
   if (!isS6Eligible.value) return '';
   if (showS6RegisterButton.value) return t('investNB.s6.hint.activate');
   if (s6PendingRaw.value > 0n) return '';
+  if (currentLevel.value === 7) return '';
   return t('investNB.s6.hint.empty');
 });
 const canRegisterS6 = computed(() => walletState.isConnected && showS6RegisterButton.value && !isRegisteringS6.value);
 const canHarvestS6 = computed(() => walletState.isConnected && isS6Registered.value && s6PendingRaw.value > 0n && !isHarvestingS6.value);
+
+const shareholderPendingText = computed(() => formatU(shareholderPendingRaw.value));
+const shareholderHarvestedText = computed(() => formatU(shareholderHarvestedRaw.value));
+const isShareholderEligible = computed(() => isShareholderQualified.value || isShareholder.value || currentLevel.value === 7);
+const s7StatusText = computed(() => {
+  if (isShareholderEligible.value) return t('investNB.s7.status.reached');
+  return t('investNB.s7.status.notReached');
+});
+const s7StatusClass = computed(() => {
+  if (isShareholderEligible.value) return 'is-ready';
+  return 'is-locked';
+});
+const canHarvestShareholder = computed(() => walletState.isConnected && isShareholder.value && shareholderPendingRaw.value > 0n && !isHarvestingShareholder.value);
+
 const canQuoteNbUsdt = computed(() => (
   ethers.isAddress(routerAddress.value || '')
   && ethers.isAddress(nbAddress.value || '')
@@ -383,6 +431,10 @@ const resetUserData = () => {
   isS6Registered.value = false;
   s6PendingRaw.value = 0n;
   s6HarvestedRaw.value = 0n;
+  isShareholderQualified.value = false;
+  isShareholder.value = false;
+  shareholderPendingRaw.value = 0n;
+  shareholderHarvestedRaw.value = 0n;
 };
 
 const onInvestAmountChange = (event) => {
@@ -441,7 +493,11 @@ const loadData = async () => {
       s6Harv,
       totalQuota,
       remainingQuota,
-      usedQuota
+      usedQuota,
+      isShareholderQual,
+      isShareholderReg,
+      shareholderPend,
+      shareholderHarv
     ] = await Promise.all([
       usdtContract.balanceOf(user).catch(() => 0n),
       nbContract.balanceOf(user).catch(() => 0n),
@@ -460,7 +516,11 @@ const loadData = async () => {
       nbManager.userHarvestedReward(user).catch(() => 0n),
       nbContract.totalUnlockedSellQuotaU(user).catch(() => 0n),
       nbContract.remainingSellQuotaU(user).catch(() => 0n),
-      nbContract.usedSellQuotaU(user).catch(() => 0n)
+      nbContract.usedSellQuotaU(user).catch(() => 0n),
+      nbManager.isShareholderQualified(user).catch(() => false),
+      nbManager.isShareholder(user).catch(() => false),
+      nbManager.shareholderPendingReward(user).catch(() => 0n),
+      nbManager.shareholderUserHarvestedReward(user).catch(() => 0n)
     ]);
 
     usdtBalanceRaw.value = uBal;
@@ -482,6 +542,10 @@ const loadData = async () => {
     totalQuotaRaw.value = totalQuota;
     remainingQuotaRaw.value = remainingQuota;
     usedQuotaRaw.value = usedQuota;
+    isShareholderQualified.value = isShareholderQual;
+    isShareholder.value = isShareholderReg;
+    shareholderPendingRaw.value = shareholderPend;
+    shareholderHarvestedRaw.value = shareholderHarv;
   } catch (error) {
     console.error('Failed to load NB data:', error);
   } finally {
@@ -561,6 +625,27 @@ const handleHarvestS6 = async () => {
     showToast(t('toast.investNB.s6HarvestFailed'), 'error');
   } finally {
     isHarvestingS6.value = false;
+  }
+};
+
+const handleHarvestShareholder = async () => {
+  if (!canHarvestShareholder.value) return;
+  const signer = walletState.signer;
+  if (!signer || !ethers.isAddress(nbManagerAddress.value || '')) return;
+
+  try {
+    isHarvestingShareholder.value = true;
+    const nbManager = new ethers.Contract(nbManagerAddress.value, nbManagerAbi, signer);
+    const tx = await nbManager.shareholderHarvest();
+    showToast(t('toast.investNB.s7HarvestSubmitted'), 'info');
+    await tx.wait();
+    showToast(t('toast.investNB.s7HarvestSuccess'), 'success');
+    await loadData();
+  } catch (error) {
+    console.error(error);
+    showToast(t('toast.investNB.s7HarvestFailed'), 'error');
+  } finally {
+    isHarvestingShareholder.value = false;
   }
 };
 
@@ -679,6 +764,11 @@ onBeforeUnmount(() => {
 .s6-title {
   color: #ffb38d;
   text-shadow: 0 0 10px rgba(255, 69, 0, 0.3);
+}
+
+.s7-title {
+  color: #ffd2a4;
+  text-shadow: 0 0 10px rgba(255, 140, 0, 0.3);
 }
 
 .input-card {
@@ -908,6 +998,10 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 12px;
+}
+
+.dividend-status-row.single-col {
+  grid-template-columns: 1fr;
 }
 
 .status-group {
