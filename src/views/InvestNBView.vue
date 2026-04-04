@@ -163,7 +163,20 @@
           </div>
         </div>
 
+        <p v-if="s7HintText" class="hint-line warning">
+          {{ s7HintText }}
+        </p>
+
         <button
+          v-if="showShareholderRegisterButton"
+          class="confirm-btn primary"
+          :disabled="!canRegisterShareholder"
+          @click="handleRegisterShareholder"
+        >
+          {{ isRegisteringShareholder ? t('investNB.s7.action.activating') : t('investNB.s7.action.activate') }}
+        </button>
+        <button
+          v-else
           class="confirm-btn primary"
           :disabled="!canHarvestShareholder"
           @click="handleHarvestShareholder"
@@ -236,6 +249,7 @@ const isShareholder = ref(false);
 const shareholderPendingRaw = ref(0n);
 const shareholderHarvestedRaw = ref(0n);
 const isHarvestingShareholder = ref(false);
+const isRegisteringShareholder = ref(false);
 
 const formatU = (val, decimals = 18) => {
   const num = Number(ethers.formatUnits(val, decimals));
@@ -319,14 +333,22 @@ const canHarvestS6 = computed(() => walletState.isConnected && isS6Registered.va
 const shareholderPendingText = computed(() => formatU(shareholderPendingRaw.value));
 const shareholderHarvestedText = computed(() => formatU(shareholderHarvestedRaw.value));
 const isShareholderEligible = computed(() => isShareholderQualified.value || isShareholder.value || currentLevel.value === 7);
+const showShareholderRegisterButton = computed(() => isShareholderQualified.value && !isShareholder.value);
 const s7StatusText = computed(() => {
+  if (showShareholderRegisterButton.value) return t('investNB.s7.status.pendingActivation');
   if (isShareholderEligible.value) return t('investNB.s7.status.reached');
   return t('investNB.s7.status.notReached');
 });
 const s7StatusClass = computed(() => {
+  if (showShareholderRegisterButton.value) return 'is-warning';
   if (isShareholderEligible.value) return 'is-ready';
   return 'is-locked';
 });
+const s7HintText = computed(() => {
+  if (showShareholderRegisterButton.value) return t('investNB.s7.hint.activate');
+  return '';
+});
+const canRegisterShareholder = computed(() => walletState.isConnected && showShareholderRegisterButton.value && !isRegisteringShareholder.value);
 const canHarvestShareholder = computed(() => walletState.isConnected && isShareholder.value && shareholderPendingRaw.value > 0n && !isHarvestingShareholder.value);
 
 const canQuoteNbUsdt = computed(() => (
@@ -627,6 +649,27 @@ const handleHarvestS6 = async () => {
     showToast(t('toast.investNB.s6HarvestFailed'), 'error');
   } finally {
     isHarvestingS6.value = false;
+  }
+};
+
+const handleRegisterShareholder = async () => {
+  if (!canRegisterShareholder.value) return;
+  const signer = walletState.signer;
+  if (!signer || !walletState.address || !ethers.isAddress(nbManagerAddress.value || '')) return;
+
+  try {
+    isRegisteringShareholder.value = true;
+    const nbManager = new ethers.Contract(nbManagerAddress.value, nbManagerAbi, signer);
+    const tx = await nbManager.registerShareholder(walletState.address);
+    showToast(t('toast.investNB.s7ActivateSubmitted'), 'info');
+    await tx.wait();
+    showToast(t('toast.investNB.s7ActivateSuccess'), 'success');
+    await loadData();
+  } catch (error) {
+    console.error(error);
+    showToast(t('toast.investNB.s7ActivateFailed'), 'error');
+  } finally {
+    isRegisteringShareholder.value = false;
   }
 };
 
