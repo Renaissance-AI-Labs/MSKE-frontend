@@ -98,6 +98,7 @@
       <section class="content-panel dividend-panel">
         <div class="panel-decor"></div>
         <h2 class="panel-title s6-title">{{ t('investNB.panel.s6') }}</h2>
+        <p class="panel-desc">{{ t('investNB.s6.desc') }}</p>
 
         <div class="dividend-status-row single-col" v-if="currentLevel !== 7">
           <div class="status-group">
@@ -142,6 +143,7 @@
       <section class="content-panel dividend-panel s7-panel">
         <div class="panel-decor"></div>
         <h2 class="panel-title s7-title">{{ t('investNB.panel.s7') }}</h2>
+        <p class="panel-desc">{{ t('investNB.s7.desc') }}</p>
 
         <div class="dividend-status-row single-col">
           <div class="status-group">
@@ -769,6 +771,15 @@ onBeforeUnmount(() => {
 .s7-title {
   color: #ffd2a4;
   text-shadow: 0 0 10px rgba(255, 140, 0, 0.3);
+}
+
+.panel-desc {
+  font-size: 0.8rem;
+  color: #bba392;
+  margin-bottom: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  text-align: left;
 }
 
 .input-card {
