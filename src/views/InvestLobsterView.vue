@@ -195,6 +195,7 @@ const activating = ref(false);
 const approvingFeed = ref(false);
 const feeding = ref(false);
 const claiming = ref(false);
+const hasLoadedInitialState = ref(false);
 
 const usdtDecimals = ref(DEFAULT_DECIMALS);
 const usdtBalanceRaw = ref(0n);
@@ -414,6 +415,7 @@ async function loadData() {
     if (requestId === refreshRequestId) {
       resetContractData();
       resetUserData();
+      hasLoadedInitialState.value = true;
       loadingData.value = false;
     }
     return;
@@ -494,6 +496,7 @@ async function loadData() {
     }
   } finally {
     if (requestId === refreshRequestId) {
+      hasLoadedInitialState.value = true;
       loadingData.value = false;
     }
   }
@@ -642,8 +645,10 @@ const lobsterBadgeClass = computed(() => ({
   'is-locked': !activated.value && !isEligible.value
 }));
 
+const showActivateLoadingState = computed(() => loadingData.value && !hasLoadedInitialState.value);
+
 const activateButtonText = computed(() => {
-  if (loadingData.value) return text('actionLoading');
+  if (showActivateLoadingState.value) return text('actionLoading');
   if (activating.value) return text('actionActivating');
   if (!walletState.isConnected) return text('actionConnect');
   if (!isContractConfigured.value) return text('actionUnavailable');
@@ -683,7 +688,7 @@ const claimButtonText = computed(() => {
 const showUpgradeHint = computed(() => isS6.value && !isShareholder.value);
 
 const activateActionDisabled = computed(() => (
-  loadingData.value || activating.value || !isContractConfigured.value
+  showActivateLoadingState.value || activating.value || !isContractConfigured.value
 ));
 
 const feedActionDisabled = computed(() => (
@@ -942,6 +947,7 @@ async function refreshPendingRewardOnly() {
 
 watch(() => [walletState.address, walletState.isConnected], () => {
   feedAmount.value = '';
+  hasLoadedInitialState.value = false;
   loadData();
   startRewardPolling();
 });
