@@ -38,6 +38,7 @@
         :aria-expanded="isInvestPanelOpen"
         @click="toggleInvestPanel"
       >
+        <span class="invest-button-glow" aria-hidden="true"></span>
         <span class="nav-icon" v-html="investButtonIcon" aria-hidden="true"></span>
         <span class="nav-label">{{ t('nav.invest') }}</span>
       </button>
@@ -196,7 +197,7 @@ onBeforeUnmount(() => {
 }
 
 .bottom-nav {
-  padding: 10px 12px 12px;
+  padding: 14px 12px 12px;
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 8px;
@@ -349,42 +350,71 @@ onBeforeUnmount(() => {
 
 .nav-item--invest {
   position: relative;
-  min-height: 58px;
-  color: #fff3df;
-  background: linear-gradient(180deg, rgba(255, 129, 73, 0.26) 0%, rgba(255, 91, 37, 0.16) 100%);
+  margin-top: -18px;
+  min-height: 74px;
+  gap: 8px;
+  color: #fff9f1;
+  border-radius: 18px;
+  overflow: visible;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 252, 246, 0.38), transparent 34%),
+    linear-gradient(180deg, rgba(255, 194, 126, 0.98) 0%, rgba(255, 128, 62, 0.98) 58%, rgba(196, 61, 16, 0.98) 100%);
   border: none;
-  box-shadow: inset 0 1px 0 rgba(255, 241, 226, 0.14), 0 8px 18px rgba(255, 91, 37, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 249, 238, 0.5),
+    0 14px 30px rgba(255, 103, 49, 0.28);
 }
 
-.nav-item--invest::before {
+.nav-item--invest::after {
   content: '';
   position: absolute;
-  top: 8px;
-  left: 50%;
-  width: 22px;
-  height: 2px;
-  transform: translateX(-50%);
+  inset: auto 14px -10px;
+  height: 18px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(255, 236, 214, 0), rgba(255, 236, 214, 0.88), rgba(255, 236, 214, 0));
+  background: rgba(255, 122, 58, 0.48);
+  filter: blur(14px);
+  opacity: 0.72;
+  z-index: -2;
+}
+
+.invest-button-glow {
+  position: absolute;
+  inset: -8px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 50% 14%, rgba(255, 255, 255, 0.3), transparent 34%),
+    radial-gradient(circle at 50% 100%, rgba(255, 145, 78, 0.24), transparent 42%);
+  opacity: 0.94;
+  z-index: -1;
+  pointer-events: none;
 }
 
 .nav-item--invest .nav-icon {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
+  filter: drop-shadow(0 2px 8px rgba(112, 33, 6, 0.18));
 }
 
 .nav-item--invest .nav-label {
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  text-shadow: 0 1px 10px rgba(112, 33, 6, 0.18);
 }
 
 .nav-item--invest.active,
 .nav-item--invest.expanded,
 .nav-item--invest:hover {
   color: #fffaf3;
-  background: linear-gradient(180deg, rgba(255, 150, 95, 0.34) 0%, rgba(255, 102, 49, 0.22) 100%);
-  box-shadow: inset 0 1px 0 rgba(255, 245, 235, 0.22), 0 10px 20px rgba(255, 104, 47, 0.18);
+  transform: translateY(-1px);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.44), transparent 34%),
+    linear-gradient(180deg, rgba(255, 204, 142, 1) 0%, rgba(255, 138, 70, 0.98) 56%, rgba(214, 68, 20, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 248, 239, 0.62),
+    0 18px 34px rgba(255, 111, 49, 0.34);
 }
 
 .invest-panel-enter-active,
@@ -417,15 +447,26 @@ onBeforeUnmount(() => {
   .nav-label {
     font-size: 11px;
   }
+
+  .nav-item--invest {
+    min-height: 70px;
+    margin-top: -14px;
+  }
+
+  .nav-item--invest .nav-label {
+    font-size: 13px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .bottom-nav-shell,
   .nav-item,
   .invest-card,
+  .invest-button-glow,
   .invest-panel-enter-active,
   .invest-panel-leave-active {
     transition: none;
+    animation: none;
   }
 }
 </style>

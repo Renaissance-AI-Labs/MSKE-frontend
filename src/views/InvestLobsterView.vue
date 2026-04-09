@@ -104,9 +104,6 @@
 
           <div v-if="showUpgradeHint" class="claim-note">
             <p class="hint-line warning hint-line--left">{{ text('upgradeHint') }}</p>
-            <button class="text-link" @click="handleGoToInvestNb">
-              {{ text('learnUpgrade') }}
-            </button>
           </div>
 
           <button class="action-btn primary action-btn--block action-btn--claim" :disabled="claimActionDisabled" @click="handleClaim">
@@ -178,7 +175,6 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
 import { ethers } from 'ethers';
 import { t } from '@/i18n/index.js';
 import { walletState } from '@/services/wallet';
@@ -193,8 +189,6 @@ const BP_DENOMINATOR = 10000n;
 const ONE_TOKEN = 10n ** 18n;
 const REWARD_POLL_INTERVAL = 6000;
 const VALUE_ANIMATION_DURATION = 1800;
-
-const router = useRouter();
 
 const loadingData = ref(false);
 const activating = ref(false);
@@ -699,10 +693,6 @@ const feedActionDisabled = computed(() => (
 const claimActionDisabled = computed(() => (
   claiming.value || !isContractConfigured.value
 ));
-
-function handleGoToInvestNb() {
-  router.push({ name: 'InvestNB' });
-}
 
 async function handleActivate() {
   if (!walletState.isConnected || !walletState.address) {
@@ -1889,10 +1879,6 @@ onBeforeUnmount(() => {
   margin: 0;
 }
 
-.claim-note .text-link {
-  margin-top: 8px;
-}
-
 .fee-card {
   margin-top: 14px;
   padding: 14px;
@@ -1916,17 +1902,6 @@ onBeforeUnmount(() => {
   margin-left: 0;
   margin-right: 0;
   text-align: left;
-}
-
-.text-link {
-  margin-top: 10px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: #ff9f72;
-  font-size: 0.8rem;
-  font-weight: 700;
-  cursor: pointer;
 }
 
 .feature-grid {
