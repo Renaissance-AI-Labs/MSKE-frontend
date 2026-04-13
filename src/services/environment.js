@@ -35,7 +35,7 @@ export const APP_ENV = getAppEnv();
  * true: users can execute the buy flow normally.
  */
 export const SHOW_STAKING_ADVANCED_STATS = false;
-export const ENABLE_ORDER_HARVEST = false;
+export const ENABLE_ORDER_HARVEST = true;
 export const ENABLE_BUY_TRADE = true;
 
 /**
