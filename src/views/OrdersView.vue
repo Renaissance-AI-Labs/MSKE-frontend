@@ -55,10 +55,6 @@
                   <span class="row-value strong">{{ record.amountText }} U</span>
                 </div>
                 <div class="row" v-if="activeStatus === 0">
-                  <span class="row-label">{{ t('orders.dailyRewardRate') }}</span>
-                  <span class="row-value highlight">{{ record.dailyRewardRateText }}</span>
-                </div>
-                <div class="row" v-if="activeStatus === 0">
                   <span class="row-label">{{ t('orders.currentUnstakeRate') }}</span>
                   <span class="row-value warn">{{ record.unstakeRateText }}</span>
                 </div>

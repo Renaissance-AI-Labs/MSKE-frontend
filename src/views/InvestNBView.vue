@@ -359,6 +359,7 @@ const canQuoteNbUsdt = computed(() => (
 ));
 
 let nbBalanceQuoteRequestId = 0;
+const ONE_NB_RAW = ethers.parseUnits('1', 18);
 
 const investAmountRaw = computed(() => {
   if (!investAmount.value || Number(investAmount.value) <= 0) return 0n;
@@ -421,14 +422,15 @@ const refreshNbBalanceUsdtQuote = async (provider, nbAmountRaw) => {
 
   try {
     const routerContract = new ethers.Contract(routerAddress.value, pancakeRouterV2Abi, provider);
-    const amountsOut = await routerContract.getAmountsOut(nbAmountRaw, [
+    const amountsOut = await routerContract.getAmountsOut(ONE_NB_RAW, [
       nbAddress.value,
       mskeAddress.value,
       usdtAddress.value
     ]);
 
     if (requestId !== nbBalanceQuoteRequestId) return;
-    nbBalanceUsdtRaw.value = amountsOut[amountsOut.length - 1] ?? 0n;
+    const unitPriceUsdtRaw = amountsOut[amountsOut.length - 1] ?? 0n;
+    nbBalanceUsdtRaw.value = (unitPriceUsdtRaw * nbAmountRaw) / ONE_NB_RAW;
   } catch (error) {
     if (requestId === nbBalanceQuoteRequestId) {
       nbBalanceUsdtRaw.value = null;
